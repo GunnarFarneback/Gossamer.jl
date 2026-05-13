@@ -1,8 +1,10 @@
 using Gossamer: format_string
 
-function print_formatting_failure(filename, formatted, expected)
+function print_formatting_failure(filename, original, formatted, expected)
     formatted == expected && return
     printstyled(stderr, "In ", filename, ":\n", color = :yellow)
+    printstyled(stderr, "Original:\n", color = :blue)
+    println(stderr, original)
     printstyled(stderr, "Formatted:\n", color = :blue)
     println(stderr, formatted)
     printstyled(stderr, "Expected:\n", color = :blue)
@@ -29,16 +31,19 @@ for filename in readdir(joinpath(@__DIR__, "data"), join = true)
             if length(parts) == 1
                 # The code should not change from formatting.
                 formatted = format_string(parts[1])
-                print_formatting_failure(filename, formatted, parts[1])
+                print_formatting_failure(filename, parts[1], formatted,
+                                         parts[1])
                 @test formatted == parts[1]
             else
                 # The first part should format into the second part.
                 # The second part should format into itself.
                 formatted1 = format_string(parts[1])
                 formatted2 = format_string(parts[2])
-                print_formatting_failure(filename, formatted1, parts[2])
+                print_formatting_failure(filename, parts[1], formatted1,
+                                         parts[2])
                 @test formatted1 == parts[2]
-                print_formatting_failure(filename, formatted2, parts[2])
+                print_formatting_failure(filename, parts[2], formatted2,
+                                         parts[2])
                 @test formatted2 == parts[2]
             end
         end
