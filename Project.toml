@@ -1,0 +1,18 @@
+name = "Gossamer"
+uuid = "c70913f9-ccc6-419f-8474-1c837f9a30c0"
+version = "0.1.0"
+authors = ["Gunnar Farnebäck <gunnar.farneback@contextvision.se>"]
+
+[workspace]
+projects = ["test"]
+
+[deps]
+JuliaSyntax = "70703baa-626e-46a2-a12c-08ffd08c73b4"
+OptParse = "1244ff17-1aa7-4121-9347-f4ead108e58f"
+
+[compat]
+JuliaSyntax = "1"
+OptParse = "0.2.1"
+julia = "1.12"
+
+[apps.gossamer]
