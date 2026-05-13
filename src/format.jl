@@ -230,6 +230,7 @@ function indent(node, base_indent)
         last_indent = -1
         opening_column = -1
         colon_column = -1
+        hanging_indent = -1
         opening_is_import_like = false
         while !is_root(opening_node)
             opening_node = move_left_no_descent(opening_node)
@@ -251,6 +252,7 @@ function indent(node, base_indent)
                 next = move_right_to_leaf(opening_node)
                 if next !== node && iskind(next, K"NewlineWs")
                     last_indent = indentation_of_node(next)
+                    hanging_indent = last_indent
                     break
                 end
             end
@@ -261,6 +263,9 @@ function indent(node, base_indent)
         elseif last_indent >= 0
             if iskind(move_right(node), K")", K"]", K"}")
                 pushfirst!(indent_to, base_indent)
+                if hanging_indent == last_indent
+                    pushfirst!(indent_to, last_indent)
+                end
             else
                 pushfirst!(indent_to, last_indent)
                 push!(indent_to, base_indent + 4)
