@@ -204,7 +204,7 @@ function insert_leaf_node!(node, position, kind, text)
 end
 
 function update_column_for_rest_of_row(node, column = node.column)
-    while kind(node) != K"NewlineWs"
+    while !is_root(node) && kind(node) != K"NewlineWs"
         if is_leaf(node)
             column = node.column + length(node.text)
         end
