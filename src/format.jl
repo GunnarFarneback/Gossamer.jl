@@ -4,7 +4,8 @@ function format_string(s::AbstractString)
     return write_node(node)
 end
 
-function format_node!(node::Node, parent::Node = node, base_indent::Int = 0)
+function format_node!(node::Node, parent::Node = node,
+                      base_indent::Tuple{Int, Int} = (0, 0))
     i = 1
     recurse_into_children = !inhibit_node_recursion(node)
     while i <= length(node.children)
@@ -196,8 +197,12 @@ function indent(node, base_indent)
 
             return base_indent
         else
-            return base_indent + 4
+            return base_indent .+ (4, 0)
         end
+    elseif (iskind(node, K"=") && iskind(parent, K"=")
+            && index < length(parent.children)
+            && iskind(parent.children[index + 1], K"NewlineWs"))
+        return max.(base_indent, (0, 4))
     elseif kind(node) != K"NewlineWs"
         return base_indent
     end
@@ -210,20 +215,24 @@ function indent(node, base_indent)
     # Do not indent multiline strings or commands.
     is_multiline_string_or_cmd(move_right(node)) && return base_indent
 
+    if iskind(parent, K"call", K"comparison")
+        base_indent = max.(base_indent, (0, 4))
+    end
+
     indent_to = Int[]
-    if iskind(parent, K"block")
+    if iskind(parent, K"block") && !iskind(parent.parent, K"parens")
         if iskind(move_right_to_leaf(node), K"end", K"elseif",
                   K"else", K"catch", K"finally")
             if !iskind(parent.parent, K"module")
-                push!(indent_to, base_indent - 4)
+                push!(indent_to, sum(base_indent) - 4)
             end
         else
-            push!(indent_to, base_indent)
+            push!(indent_to, sum(base_indent))
         end
     elseif iskind(parent, K"tuple") && iskind(parent.parent, K"do")
-        push!(indent_to, base_indent + 4)
+        push!(indent_to, sum(base_indent) + 4)
     elseif iskind(parent, K"let")
-        push!(indent_to, base_indent + 4)
+        push!(indent_to, sum(base_indent) + 4)
     else
         opening_node = node
         indentation_determined = false
@@ -236,6 +245,9 @@ function indent(node, base_indent)
             opening_node = move_left_no_descent(opening_node)
             if iskind(opening_node, K"(", K"[", K"{")
                 opening_column = opening_node.column
+                if iskind(move_right_to_leaf(opening_node), K"begin")
+                    base_indent = (opening_node.column, 0)
+                end
                 break
             elseif is_leaf(opening_node) && iskind(opening_node, K"import", K"using", K"export", K"public")
                 opening_column = opening_node.column + length(opening_node.text)
@@ -259,16 +271,16 @@ function indent(node, base_indent)
         end
 
         if is_root(opening_node)
-            push!(indent_to, base_indent)
+            push!(indent_to, sum(base_indent))
         elseif last_indent >= 0
             if iskind(move_right(node), K")", K"]", K"}")
-                pushfirst!(indent_to, base_indent)
+                pushfirst!(indent_to, first(base_indent))
                 if hanging_indent == last_indent
                     pushfirst!(indent_to, last_indent)
                 end
             else
                 pushfirst!(indent_to, last_indent)
-                push!(indent_to, base_indent + 4)
+                push!(indent_to, sum(base_indent))
             end
         else
             next_node = move_right_to_leaf(opening_node)
@@ -277,16 +289,20 @@ function indent(node, base_indent)
             end
             if iskind(next_node, K"NewlineWs")
                 if next_node === node
-                    pushfirst!(indent_to, base_indent + 4)
+                    if iskind(opening_node, K"=")
+                        pushfirst!(indent_to, sum(base_indent))
+                    else
+                        pushfirst!(indent_to, sum(base_indent))
+                    end
                 elseif !iskind(move_right(node), K")", K"]", K"}")
-                    push!(indent_to, base_indent + 4)
+                    push!(indent_to, sum(base_indent) + 4)
                 else
-                    push!(indent_to, base_indent)
+                    push!(indent_to, sum(base_indent))
                 end
             else
                 @assert opening_column >= 0
                 pushfirst!(indent_to, opening_column)
-                push!(indent_to, base_indent + 4)
+                push!(indent_to, sum(max.(base_indent, (0, 4))))
                 if opening_is_import_like && colon_column >= 0
                     pushfirst!(indent_to, colon_column)
                 end
