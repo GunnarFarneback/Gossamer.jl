@@ -97,3 +97,5 @@ x = 1 + (y.a / 2)
 1// 2
 #
 1 // 2
+## Don't mess with strings.
+"a$(b)c"

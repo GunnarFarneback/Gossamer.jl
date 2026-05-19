@@ -4,7 +4,7 @@ mutable struct Node
     # Empty for leaf nodes.
     children::Vector{Node}
     # Sibling index. Unless `node` is the root node, it must always
-    # hold that `node == node.parent[node.index]`.
+    # hold that `node === node.parent[node.index]`.
     index::Int
     # Row in source. Never changes, only used for debugging. Nodes
     # inserted while formatting have row number zero.
@@ -18,6 +18,8 @@ mutable struct Node
     # Head of corresponding GreenNode.
     # TODO: Change to Kind?
     head::SyntaxHead
+    # Formatting metadata, used as needed for bookkeeping.
+    attributes::Dict{Symbol, Any}
     # Root node points to itself.
     parent::Node
 
@@ -26,10 +28,12 @@ mutable struct Node
                   text::Union{String, SubString{String}}, head::SyntaxHead,
                   parent::Union{Nothing, Node})
         if isnothing(parent)
-            node = new(children, index, row, column, text, head)
+            node = new(children, index, row, column, text, head,
+                       Dict{Symbol, Any}())
             node.parent = node
         else
-            node = new(children, index, row, column, text, head, parent)
+            node = new(children, index, row, column, text, head,
+                       Dict{Symbol, Any}(), parent)
         end
         return node
     end
@@ -56,7 +60,7 @@ function print_node(io::IO, node::Node, indent)
             i < length(node.children) && println(io)
         end
     end
-end    
+end
 
 kind(node::Node) = JuliaSyntax.kind(node.head)
 iskind(node::Node, kinds::JuliaSyntax.Kind...) = any(==(kind(node)), kinds)
@@ -64,6 +68,17 @@ is_root(node) = node.parent === node
 is_leaf(node) = isempty(node.children)
 is_whitespace(node) = iskind(node, K"Whitespace", K"NewlineWs")
 is_literal(node) = JuliaSyntax.is_literal(kind(node))
+is_first_sibling(node) = first(node.parent.children) === node
+is_last_sibling(node) = last(node.parent.children) === node
+add_attribute!(node::Node, attr::Symbol) = set_attribute!(node, attr, true)
+has_attribute(node::Node, attr::Symbol) = haskey(node.attributes, attr)
+has_attribute(::Nothing, ::Symbol) = false
+function set_attribute!(node::Node, attr::Symbol, value)
+    node.attributes[attr] = value
+end
+get_attribute(node::Node, attr::Symbol) = node.attributes[attr]
+get_attribute(node::Node, attr::Symbol, default) =
+    get(node.attributes, attr, default)
 
 function green_to_node(green::GreenNode, raw::AbstractString, pos::Int = 1,
                        row::Int = 1, column::Int = 1, sibling_index::Int = 1,
@@ -174,6 +189,19 @@ function move_left_to_leaf(node)
             return rightmost_leaf(node.parent.children[node.index - 1])
         end
         node = node.parent
+    end
+    return node
+end
+
+# Combination of the two functions above.
+function move_left_no_descent_to_leaf(node)
+    while !is_root(node)
+        if node.index > 1
+            node = node.parent.children[node.index - 1]
+        else
+            node = node.parent
+        end
+        is_leaf(node) && break
     end
     return node
 end

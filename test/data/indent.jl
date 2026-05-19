@@ -124,6 +124,22 @@ let x = 1
     x
 end
 ##
+z = let x = 1,
+y = 2
+x
+end
+#
+z = let x = 1,
+        y = 2
+    x
+end
+## Also accept
+z = let x = 1,
+        y = 2
+
+        x
+    end
+##
 let
 x = 1
 x
@@ -259,6 +275,12 @@ end
     return :x
 end
 ##
+function
+    f(x)
+
+    return :x
+end
+##
 return esc(quote
                :x
            end)
@@ -278,9 +300,26 @@ for x in 1:2,
     f(x + y)
 end
 ##
+let x = 1,
+    y = 3
+    f(x + y)
+end
+#
+let x = 1,
+    y = 3
+
+    f(x + y)
+end
+##
+if true && false &&
+    true
+    false
+end
+#
 if true && false &&
     true
 
+    false
 end
 ##
 @testset "" begin
@@ -301,13 +340,155 @@ end
         z
 end
 ##
-y = x ? 1 :
-        2
+yyy = x ? 1 :
+          2
 ##
-y = x ? 1 :
+yyy = x ? 1 :
+      2
+##
+yyy = x ? 1 :
     2
 ##
 xxxxxxxxxxxxx =
     yyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy =
     zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz =
     wwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwww = 2
+## First line spaces.
+  1
+#
+1
+##
+   
+1
+#
+
+1
+##
+if true for x in X
+        x
+    end
+end
+##
+true && for x in X
+    x
+end
+##
+true &&
+    for x in X
+        x
+    end
+##
+true && (for x in X
+             x
+         end)
+##
+true && (
+    for x in X
+        x
+    end)
+##
+true && (for x in X
+             x
+         end
+         )
+##
+true && (
+    for x in X
+        x
+    end
+)
+##
+if true
+if true
+if true
+1
+elseif false
+2
+else
+3
+end
+
+try
+x
+catch e
+e
+finally
+0
+end
+end
+end
+#
+if true
+    if true
+        if true
+            1
+        elseif false
+            2
+        else
+            3
+        end
+
+        try
+            x
+        catch e
+            e
+        finally
+            0
+        end
+    end
+end
+##
+f(x) = (g(x,
+          x); x)
+##
+if x == +
+    1
+end
+##
+yy = ff(
+    #
+    x)
+##
+f(g) = g * g'
+1
+##
+x = ' '
+y
+##
+f() do
+    g(x,
+      y)
+end
+##
+begin
+    for h in H,
+        w in W
+    end
+end
+##
+Dict(x
+     for x in X)
+##
+Dict(x
+     for x in X
+     if true)
+##
+Dict(x
+     for x in X,
+         y in Y)
+##
+Dict(x
+     for x in X,
+         y in Y
+     if true)
+##
+if true &&
+!false
+x
+end
+#
+if true &&
+    !false
+
+    x
+end

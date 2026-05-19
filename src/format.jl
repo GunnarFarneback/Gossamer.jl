@@ -4,25 +4,24 @@ function format_string(s::AbstractString)
     return write_node(node)
 end
 
-function format_node!(node::Node, parent::Node = node,
-                      base_indent::Tuple{Int, Int} = (0, 0))
+function format_node!(node::Node, parent::Node = node)
     i = 1
-    recurse_into_children = !inhibit_node_recursion(node)
+    inhibit_node_recursion(node) && return
+    propagate_inline_space_inhibition(node)
     while i <= length(node.children)
         child = node.children[i]
         space_after_comma(child)
         i = space_around_binary_operator(child)
-        base_indent = indent(child, base_indent)
-        if recurse_into_children
-            format_node!(child, node, base_indent)
-        end
+        i += indent(child)
+        format_node!(child, node)
         i += 1
     end
     return
 end
 
+# TODO: Replace with :inhibit_inline_space_formatting mechanism?
 function inhibit_node_recursion(node)
-    iskind(node, K"string") && return true
+    iskind(node, K"string", K"cmdstring") && return true
     is_colon_call(node) && return true
     return false
 end
@@ -33,7 +32,15 @@ function is_colon_call(node)
                for child in node.children)
 end
 
+function propagate_inline_space_inhibition(node)
+    has_attribute(node, :inhibit_inline_space_formatting) || return
+    for child in node.children
+        add_attribute!(child, :inhibit_inline_space_formatting)
+    end
+end
+
 function space_after_comma(node)
+    has_attribute(node, :inhibit_inline_space_formatting) && return
     prev = move_left_to_leaf(node)
     next = move_right_to_leaf(node)
     if (iskind(node, K",", K";") &&
@@ -54,14 +61,17 @@ function space_after_comma(node)
 end
 
 # Returns new index of the node.
+#
+# TODO: Rewrite to return index offset instead of new index.
 function space_around_binary_operator(node)
     parent = node.parent
     index = node.index
     index == 1 && return index
+    has_attribute(node, :inhibit_inline_space_formatting) && return index
     # Only consider operator nodes.
     node_is_operator(node) || return index
     iskind(node, K".") && return index
-    
+
     space_before = false
     nonspace_before = false
     dot_before = false
@@ -120,9 +130,9 @@ function space_around_binary_operator(node)
     next = move_right(node)
     if (iskind(node, K"=") && iskind(node.parent, K"=")
         && iskind(node.parent.parent, K"call", K"parameters", K"macrocall", K"tuple")
-        && !space_before && !space_after
-        && (is_literal(next) || iskind(next, K"Identifier")))
+        && !space_before && !space_after)
 
+        add_attribute!(move_right(node), :inhibit_inline_space_formatting)
         return index
     end
 
@@ -181,163 +191,6 @@ function space_around_binary_operator(node)
     return index
 end
 
-# Returns new base indent value.
-function indent(node, base_indent)
-    # Special case, trim space from the very start of the file
-    if node.row == 1 && node.column == 1 && iskind(node, K"Whitespace")
-        node.text = lstrip(node.text, ' ')
-        return base_indent
-    end
-
-    parent = node.parent
-    index = node.index
-    if iskind(node, K"block") && !is_leaf(node)
-        if (iskind(parent, K"else", K"elseif", K"catch", K"finally", K"module")
-            || iskind(move_left(node), K"else", K"let"))
-
-            return base_indent
-        else
-            return base_indent .+ (4, 0)
-        end
-    elseif (iskind(node, K"=") && iskind(parent, K"=")
-            && index < length(parent.children)
-            && iskind(parent.children[index + 1], K"NewlineWs"))
-        return max.(base_indent, (0, 4))
-    elseif kind(node) != K"NewlineWs"
-        return base_indent
-    end
-
-    @assert count(==('\n'), node.text) == 1
-
-    # Do not indent lines starting with `#` in the first column.
-    is_first_column_comment(move_right(node)) && return base_indent
-
-    # Do not indent multiline strings or commands.
-    is_multiline_string_or_cmd(move_right(node)) && return base_indent
-
-    if iskind(parent, K"call", K"comparison")
-        base_indent = max.(base_indent, (0, 4))
-    end
-
-    indent_to = Int[]
-    if iskind(parent, K"block") && !iskind(parent.parent, K"parens")
-        if iskind(move_right_to_leaf(node), K"end", K"elseif",
-                  K"else", K"catch", K"finally")
-            if !iskind(parent.parent, K"module")
-                push!(indent_to, sum(base_indent) - 4)
-            end
-        else
-            push!(indent_to, sum(base_indent))
-        end
-    elseif iskind(parent, K"tuple") && iskind(parent.parent, K"do")
-        push!(indent_to, sum(base_indent) + 4)
-    elseif iskind(parent, K"let")
-        push!(indent_to, sum(base_indent) + 4)
-    else
-        opening_node = node
-        indentation_determined = false
-        last_indent = -1
-        opening_column = -1
-        colon_column = -1
-        hanging_indent = -1
-        opening_is_import_like = false
-        while !is_root(opening_node)
-            opening_node = move_left_no_descent(opening_node)
-            if iskind(opening_node, K"(", K"[", K"{")
-                opening_column = opening_node.column
-                if iskind(move_right_to_leaf(opening_node), K"begin")
-                    base_indent = (opening_node.column, 0)
-                end
-                break
-            elseif is_leaf(opening_node) && iskind(opening_node, K"import", K"using", K"export", K"public")
-                opening_column = opening_node.column + length(opening_node.text)
-                opening_is_import_like = true
-                break
-            elseif is_leaf(opening_node) && iskind(opening_node, K":")
-                colon_column = opening_node.column + 1
-            elseif is_leaf(opening_node) && iskind(opening_node, K"=")
-                opening_column = opening_node.column + 1
-                break
-            elseif iskind(opening_node, K"NewlineWs")
-                last_indent = indentation_of_node(opening_node)
-            else
-                next = move_right_to_leaf(opening_node)
-                if next !== node && iskind(next, K"NewlineWs")
-                    last_indent = indentation_of_node(next)
-                    hanging_indent = last_indent
-                    break
-                end
-            end
-        end
-
-        if is_root(opening_node)
-            push!(indent_to, sum(base_indent))
-        elseif last_indent >= 0
-            if iskind(move_right(node), K")", K"]", K"}")
-                pushfirst!(indent_to, first(base_indent))
-                if hanging_indent == last_indent
-                    pushfirst!(indent_to, last_indent)
-                end
-            else
-                pushfirst!(indent_to, last_indent)
-                push!(indent_to, sum(base_indent))
-            end
-        else
-            next_node = move_right_to_leaf(opening_node)
-            if iskind(next_node, K"Comment")
-                next_node = move_right_to_leaf(opening_node)
-            end
-            if iskind(next_node, K"NewlineWs")
-                if next_node === node
-                    if iskind(opening_node, K"=")
-                        pushfirst!(indent_to, sum(base_indent))
-                    else
-                        pushfirst!(indent_to, sum(base_indent))
-                    end
-                elseif !iskind(move_right(node), K")", K"]", K"}")
-                    push!(indent_to, sum(base_indent) + 4)
-                else
-                    push!(indent_to, sum(base_indent))
-                end
-            else
-                @assert opening_column >= 0
-                pushfirst!(indent_to, opening_column)
-                push!(indent_to, sum(max.(base_indent, (0, 4))))
-                if opening_is_import_like && colon_column >= 0
-                    pushfirst!(indent_to, colon_column)
-                end
-            end
-        end
-    end
-
-    original_text = node.text
-    exotic_spaces = lstrip(node.text, (' ', '\n'))
-    old_indent = indentation_of_node(node)
-    if old_indent in indent_to
-        return base_indent
-    end
-    isempty(indent_to) && return base_indent
-    if iskind(move_right(node), K"NewlineWs")
-        node.text = string("\n")
-    else
-        node.text = string("\n", " "^first(indent_to))
-    end
-    node.text *= exotic_spaces
-    if node.text != original_text
-        update_column_for_rest_of_row(move_right(node), first(indent_to) + 1)
-    end
-
-    return base_indent
-end
-
-function indentation_of_node(node)
-    @assert iskind(node, K"NewlineWs")
-    # TODO: This can be made more efficient.
-    m = match(r"\w*\n( *)", node.text)
-    @assert !isnothing(m)
-    return length(only(m.captures))
-end
-
 function insert_space!(node, index)
     insert_leaf_node!(node, index, K"Whitespace", " ")
     return
@@ -364,17 +217,4 @@ function node_starts_with_whitespace(node)
     iskind(node, K"Whitespace", K"NewlineWs") && return true
     is_leaf(node) && return false
     return node_starts_with_whitespace(first(node.children))
-end
-
-is_first_column_comment(node) = node.column == 1 && iskind(node, K"Comment")
-
-function is_multiline_string_or_cmd(node)
-    if iskind(node, K"macrocall")
-        length(node.children) < 2 && return false
-        node = node.children[2]
-    end
-    is_leaf(node) && return false
-    iskind(node, K"string", K"cmdstring") || return false
-    node = node.children[1]
-    return iskind(node, K"\"\"\"", K"```")
 end

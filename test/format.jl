@@ -77,7 +77,7 @@ for filename in readdir(joinpath(@__DIR__, "data"), join = true)
         for (line_number, test) in split_tests(filename)
             @testset "Line $line_number" begin
                 isempty(test) && continue
-                parts = rstrip.(split(test, "#\n"), '\n')
+                parts = split(test, "\n#\n")
                 @assert 1 <= length(parts) <= 2
                 if length(parts) == 1
                     # The code should not change from formatting.
