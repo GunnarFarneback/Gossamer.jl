@@ -5,5 +5,6 @@ include("format.jl")
 include("indent.jl")
 include("options.jl")
 include("main.jl")
+include("precompile.jl")
 
 end
