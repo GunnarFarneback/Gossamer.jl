@@ -57,6 +57,15 @@ using F: +, -, *
 struct M
     x::Int
 end
+## Accept this?
+struct M
+    x  ::Int
+    yz ::UInt
+end
+##
+f(x ::Int)
+#
+f(x::Int)
 ##
 y = x * -1
 ##
@@ -99,3 +108,9 @@ x = 1 + (y.a / 2)
 1 // 2
 ## Don't mess with strings.
 "a$(b)c"
+## Accept no-space division of literals.
+1/2
+## This is not such a case.
+1/2^(x - 1)
+#
+1 / 2^(x - 1)

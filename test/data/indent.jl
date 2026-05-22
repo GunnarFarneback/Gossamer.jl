@@ -86,11 +86,11 @@ elseif y
 else
     3
 end
-##
+## Accept modules both with and without indentation.
 module M
     x
 end
-#
+##
 module M
 x
 end
@@ -165,6 +165,10 @@ import x: y,
 import x: y,
     z
 ##
+import x:
+    y,
+    z
+##
 using x,
       y
 ##
@@ -180,16 +184,28 @@ using x: y,
 using x: y,
     z
 ##
+using x:
+    y,
+    z
+##
 export x,
        y
 ##
 export x,
     y
 ##
+export
+    x,
+    y
+##
 public x,
        y
 ##
 public x,
+    y
+##
+public
+    x,
     y
 ##
 x = Dict(1 => 2,
@@ -466,6 +482,14 @@ begin
     end
 end
 ##
+for x in X,
+y in Y
+end
+#
+for x in X,
+    y in Y
+end
+##
 Dict(x
      for x in X)
 ##
@@ -491,4 +515,162 @@ if true &&
     !false
 
     x
+end
+##
+y = f() do x
+    x
+
+    x
+end
+## Remove trailing space regardless whether indentation changes.
+if false 
+0
+else 
+    1
+end
+#
+if false
+    0
+else
+    1
+end
+## Always eliminate TAB indentation
+begin
+				1
+end
+	2
+#
+begin
+    1
+end
+2
+## Hanging indent should be preferred.
+yyyyy = (x +
+          y)
+#
+yyyyy = (x +
+         y)
+## Don't insist on adding an empty line in empty clauses.
+try
+    x
+catch e
+finally
+end
+
+try
+catch e
+finally
+end
+
+if true
+elseif false
+else
+end
+
+for i in I
+end
+
+while false
+end
+##
+esc(quote
+    tmp = min(x[$i], x[$j])
+    end)
+#
+esc(quote
+        tmp = min(x[$i], x[$j])
+    end)
+##
+ex = quote
+    x
+
+    y
+end
+##
+y = (x
+    + a * x
+    + x)
+#
+y = (x
+     + a * x
+     + x)
+##
+if a ||
+(c &&
+(d || e))
+end
+#
+if a ||
+    (c &&
+     (d || e))
+end
+##
+fffffff(x,
+        y) do z
+    z
+end
+## There's a trailing space after the `y`.
+if x ||
+    y 
+    return
+end
+#
+if x ||
+    y
+
+    return
+end
+##
+while let
+x
+end
+end
+#
+while let
+        x
+    end
+end
+##
+function g()
+    if x
+    elseif y && f() do x
+            return x
+        end
+    end
+end
+## Can skip empty line after `end` and closing brackets.
+if begin
+        x &&
+            y
+    end
+    z
+end
+##
+if (
+    x &&
+    y
+    )
+    z
+end
+##
+for x in [
+    1
+    ]
+    x
+end
+##
+for x in X
+    if x && (
+           x == x ||
+                x
+        )
+    end
+end
+#
+for x in X
+    if x && (
+        x == x ||
+            x
+    )
+    end
 end

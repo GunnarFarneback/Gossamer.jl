@@ -9,6 +9,18 @@ f(x, a = b)
 f(x, a =b)
 #
 f(x, a = b)
+##
+f.(x, a=b)
+##
+f.(x, a = b)
+##
+f.(x, a= b)
+#
+f.(x, a = b)
+##
+f.(x, a =b)
+#
+f.(x, a = b)
 ## Treat named tuples the same way.
 (; x, a=b)
 ##
