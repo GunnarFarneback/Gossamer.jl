@@ -39,11 +39,14 @@ function indent(node)
     num_hanging_block_indents = 0
     base_indent = 0
     reference_newline_node = nothing
+    in_module = false
     in_first_let_block = false
     in_second_let_block = iskind(node.parent, K"let")
     if iskind(move_right(node), K"block") && !iskind(move_right_to_leaf(node), K"begin")
         num_block_indents += 1
-        num_hanging_block_indents += 1
+        if !iskind(node.parent, K"let")
+            num_hanging_block_indents += 1
+        end
     end
     if iskind(node.parent, K"block") && is_last_sibling(node)
         num_block_indents -= 1
@@ -67,6 +70,7 @@ function indent(node)
         end
         node′ = move_left_no_descent(node′)
         if is_leaf(node′) && iskind(node′, K"module")
+            in_module = true
             num_block_indents -= 1
         elseif iskind(node′, K"NewlineWs")
             if node′ === previous_newline_node
@@ -148,8 +152,8 @@ function indent(node)
     debug && @show num_hanging_block_indents
 
     in_incomplete_expression = false
-    # TODO: Might be better to just check if we're inside a call node?
-    if node_is_operator(move_left_no_descent_to_leaf(node))
+    node′ = move_left_no_descent_to_leaf(node)
+    if node_is_operator(node′) || opening_is_import_like || (!isnothing(opening_node) && iskind(opening_node, K"for"))
         in_incomplete_expression = true
     end
     debug && @show in_incomplete_expression
@@ -170,7 +174,11 @@ function indent(node)
     indent_to = Int[]
     prefer_hanging_indent = false
     # Hanging indent.
-    if !isnothing(opening_node)
+    node′ = node
+    while iskind(node′, K"NewlineWs")
+        node′ = move_left_no_descent_to_leaf(node′)
+    end
+    if !isnothing(opening_node) && (opening_node.row == node′.row || next_is_closing)
         hanging_indent = opening_column + node_is_operator(opening_node) - 1 + 4 * num_hanging_block_indents
         debug && @show kind(opening_node) opening_column hanging_indent
         push!(indent_to, hanging_indent)
@@ -204,7 +212,7 @@ function indent(node)
     end
 
     if !isnothing(opening_node) && iskind(opening_node, K"import", K"using", K"export", K"public")
-        num_block_indents += 1
+        num_block_indents += 0
     end
 
     # It's a weird case to break the line between `function` and it's
@@ -232,6 +240,9 @@ function indent(node)
         if next_is_closing
             pushfirst!(indent_to, left_indent - 4)
         end
+    end
+    if in_module
+        push!(indent_to, base_indent + 4 * (num_block_indents + 1))
     end
     debug && @show indent_to
 
