@@ -250,6 +250,10 @@ function indent(node)
     # turn up we prefer a questionable indentation over an error.
     indent_to .= max.(indent_to, 0)
 
+    # Always remove trailing space.
+    if !startswith(node.text, "\n")
+        node.text = lstrip(!(==('\n')), node.text)
+    end
     original_text = node.text
     exotic_spaces = lstrip(node.text, (' ', '\n', '\t'))
     old_indent = indentation_of_node(node)
