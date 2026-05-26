@@ -2,9 +2,7 @@ debug = false
 
 function indent(node)
     # Special case, trim space from the very start of the file
-    if (node.row == 1 && node.column == 1
-        && iskind(node, K"Whitespace", K"NewlineWs"))
-
+    if node.row == 1 && node.column == 1 && iskind(node, K"Whitespace")
         node.text = lstrip(node.text, (' ', '\t'))
         return 0
     end
@@ -250,12 +248,10 @@ function indent(node)
     # turn up we prefer a questionable indentation over an error.
     indent_to .= max.(indent_to, 0)
 
-    # Always remove trailing space.
-    if !startswith(node.text, "\n")
-        node.text = lstrip(!(==('\n')), node.text)
-    end
-    original_text = node.text
-    exotic_spaces = lstrip(node.text, (' ', '\n', '\t'))
+    # Remove trailing space and convert indenting tabs to spaces.
+    exotic_spaces = preprocess_indentation_space!(node)
+    reference_text = node.text
+
     old_indent = indentation_of_node(node)
     debug && @show old_indent
     if isempty(indent_to) || old_indent in indent_to
@@ -269,7 +265,7 @@ function indent(node)
 
             node.text = string("\n", " "^first(indent_to))
             node.text *= exotic_spaces
-            if node.text != original_text
+            if node.text != reference_text
                 update_column_for_rest_of_row(move_right(node), first(indent_to) + 1)
             end
         end
@@ -309,11 +305,13 @@ function indentation_of_node(node)
     if has_attribute(node, :nominal_indent)
         return get_attribute(node, :nominal_indent)
     end
+    node′ = move_right(node)
+    # At the very end of the tree this takes us to the root.
+    if is_root(node′)
+        return length(node.text[findfirst(==('\n'), node.text):end])
+    end
 
-    # TODO: This can be made more efficient.
-    m = match(r"\w*\n( *)", node.text)
-    @assert !isnothing(m)
-    return length(only(m.captures))
+    return node′.column - 1
 end
 
 is_first_column_comment(node) = node.column == 1 && iskind(node, K"Comment")
@@ -327,4 +325,31 @@ function is_multiline_string_or_cmd(node)
     iskind(node, K"string", K"cmdstring") || return false
     node = node.children[1]
     return iskind(node, K"\"\"\"", K"```")
+end
+
+# * Remove all space before newline, i.e. trailing space, and update
+#   `node.text`.
+# * Skip normal space (space, tab) after newline until an exotic space
+#   (e.g. nonbreaking space) is found.
+#   * Tabs found during skipping are converted to space.
+# * Return the remaining space.
+function preprocess_indentation_space!(node)
+    newline_index = findfirst(==('\n'), node.text)
+    node.text = node.text[newline_index:end]
+    num_tabs_to_replace = 0
+    exotic_spaces = ""
+    for index in eachindex(node.text)
+        c = node.text[index]
+        if c == '\t'
+            num_tabs_to_replace += 1
+        elseif c != '\n' && c != ' '
+            exotic_spaces = node.text[index:end]
+            break
+        end
+    end
+    if num_tabs_to_replace > 0
+        node.text = replace(node.text, '\t' => ' ';
+                            count = num_tabs_to_replace)
+    end
+    return exotic_spaces
 end

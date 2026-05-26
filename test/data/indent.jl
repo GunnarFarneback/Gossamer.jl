@@ -534,7 +534,7 @@ if false
 else
     1
 end
-## Always eliminate TAB indentation
+## Always eliminate TAB indentation.
 begin
 				1
 end
@@ -544,6 +544,18 @@ begin
     1
 end
 2
+## Another TAB case.
+	
+	x
+#
+
+x
+## TAB and newline only.
+
+	
+#
+
+
 ## Hanging indent should be preferred.
 yyyyy = (x +
           y)
