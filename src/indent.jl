@@ -70,6 +70,10 @@ function indent(node)
         if is_leaf(node′) && iskind(node′, K"module")
             in_module = true
             num_block_indents -= 1
+        elseif is_leaf(node′) && iskind(node′, K")") && iskind(node′.parent, K"call")
+            while !iskind(node′, K"(")
+                node′ = move_left_no_descent_to_leaf(node′)
+            end
         elseif iskind(node′, K"NewlineWs")
             if node′ === previous_newline_node
                 previous_newline_in_reference_path = true
@@ -151,8 +155,10 @@ function indent(node)
 
     in_incomplete_expression = false
     node′ = move_left_no_descent_to_leaf(node)
-    if node_is_operator(node′) || opening_is_import_like || (!isnothing(opening_node) && iskind(opening_node, K"for"))
-        in_incomplete_expression = true
+    if node_is_operator(node′) || opening_is_import_like || (!isnothing(opening_node) && (iskind(opening_node, K"for") || (iskind(opening_node, K"let") && in_second_let_block)))
+        if move_right_to_leaf(node′) === node
+            in_incomplete_expression = true
+        end
     end
     debug && @show in_incomplete_expression
 
@@ -182,7 +188,7 @@ function indent(node)
         push!(indent_to, hanging_indent)
         next_node = move_right_to_leaf(opening_node)
         debug && @show in_incomplete_expression reference_newline_node
-        if in_incomplete_expression
+        if in_incomplete_expression && opening_node === move_left_no_descent_to_leaf(node)
         elseif next_node === node
             # Opening delimiter immediately followed by newline.
             num_block_indents += 1
@@ -228,7 +234,7 @@ function indent(node)
 
     # Indentation without consideration of hanging indent.
     left_indent = base_indent + 4 * num_block_indents
-    debug && @show left_indent base_indent num_block_indents
+    debug && @show prefer_hanging_indent left_indent base_indent num_block_indents
     if prefer_hanging_indent
         if !in_first_let_block
             push!(indent_to, left_indent)
@@ -284,12 +290,14 @@ function indent(node)
         # line. Well, unless the current line is already empty.
         p = previous_newline_node
         debug && @show node p
-        if !isnothing(p) && !previous_newline_in_reference_path && !iskind(move_right_to_leaf(node), K"NewlineWs") && !is_root(move_right(node)) &&
+        if !isnothing(p) && !previous_newline_in_reference_path &&
+            !iskind(move_right_to_leaf(node), K"NewlineWs") &&
+            !is_root(move_right(node)) &&
             indentation_of_node(p) == indentation_of_node(node)
 
             # Additionally only add a line if this is at the start of
-            # a block.
-            if iskind(move_left(node), K"block") || iskind(move_right(node), K"block")
+            # a block and the block is not empty.
+            if (iskind(move_left(node), K"block") || iskind(move_right(node), K"block")) && length(node.parent.children) > 1
                 debug && @show "inserting!"
                 insert_leaf_node!(node.parent, node.index, K"NewlineWs", "\n")
                 return 1

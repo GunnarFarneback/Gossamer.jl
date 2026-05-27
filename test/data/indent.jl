@@ -637,9 +637,39 @@ while let
 x
 end
 end
+
+while begin
+x
+end
+end
+
+for x in let
+X
+end
+end
+
+for x in begin
+X
+end
+end
 #
 while let
         x
+    end
+end
+
+while begin
+        x
+    end
+end
+
+for x in let
+        X
+    end
+end
+
+for x in begin
+        X
     end
 end
 ##
