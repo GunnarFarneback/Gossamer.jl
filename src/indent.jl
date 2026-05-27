@@ -70,7 +70,7 @@ function indent(node)
         if is_leaf(node′) && iskind(node′, K"module")
             in_module = true
             num_block_indents -= 1
-        elseif is_leaf(node′) && iskind(node′, K")") && iskind(node′.parent, K"call")
+        elseif is_leaf(node′) && iskind(node′, K")") && iskind(node′.parent, K"call", K"dotcall")
             while !iskind(node′, K"(")
                 node′ = move_left_no_descent_to_leaf(node′)
             end
@@ -155,7 +155,7 @@ function indent(node)
 
     in_incomplete_expression = false
     node′ = move_left_no_descent_to_leaf(node)
-    if node_is_operator(node′) || opening_is_import_like || (!isnothing(opening_node) && (iskind(opening_node, K"for") || (iskind(opening_node, K"let") && in_second_let_block)))
+    if node_is_operator(node′) || opening_is_import_like || (!isnothing(opening_node) && iskind(opening_node, K"for"))
         if move_right_to_leaf(node′) === node
             in_incomplete_expression = true
         end
@@ -297,7 +297,7 @@ function indent(node)
 
             # Additionally only add a line if this is at the start of
             # a block and the block is not empty.
-            if (iskind(move_left(node), K"block") || iskind(move_right(node), K"block")) && length(node.parent.children) > 1
+            if (iskind(move_left(node), K"block") || iskind(move_right(node), K"block")) && length(node.parent.children) > 1 && !iskind(move_left_to_leaf(node), K"end", K")", K"]", K"}")
                 debug && @show "inserting!"
                 insert_leaf_node!(node.parent, node.index, K"NewlineWs", "\n")
                 return 1
