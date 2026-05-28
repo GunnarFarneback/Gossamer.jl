@@ -231,6 +231,17 @@ function insert_leaf_node!(node, position, kind, text)
     return leaf
 end
 
+function remove_child!(parent, position)
+    deleteat!(parent.children, position)
+    # Child has been removed, but we must update sibling indices and
+    # column numbers for later nodes.
+    for i in position:length(parent.children)
+        parent.children[i].index = i
+    end
+    update_column_for_rest_of_row(parent)
+    return
+end
+
 function update_column_for_rest_of_row(node, column = node.column)
     while !is_root(node) && kind(node) != K"NewlineWs"
         if is_leaf(node)

@@ -101,11 +101,19 @@ x = 1 + (y.a / 2)
 ##
 1 //2
 #
-1 // 2
+1//2
 ##
 1// 2
 #
-1 // 2
+1//2
+##
+x  ::Int
+#
+x::Int
+##
+x::   Int
+#
+x::Int
 ## Don't mess with strings.
 "a$(b)c"
 ## Accept no-space division of literals.

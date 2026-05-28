@@ -124,12 +124,26 @@ function space_around_binary_operator(node)
     # Process .op when we get to op.
     iskind(node, K".") && op_after && return index
 
-    # TODO: Remove space if unbalanced.
     node.text in ("^", "::", "//") && !space_before && !space_after && return index
+
+    if node.text == "::" && space_before && !space_after
+        # Accept this inside struct definitions. It occurs in the
+        # wild.
+        if iskind(node.parent, K"::") && iskind(node.parent.parent, K"block") && iskind(node.parent.parent.parent, K"struct")
+            return index
+        end
+    end
+
+    # Accept division without space if both arguments are literals.
+    if node.text == "/" && !space_before && !space_after
+        if is_literal(move_left(node)) && is_literal(move_right(node))
+            return index
+        end
+    end
 
     next = move_right(node)
     if (iskind(node, K"=") && iskind(node.parent, K"=")
-        && iskind(node.parent.parent, K"call", K"parameters", K"macrocall", K"tuple")
+        && iskind(node.parent.parent, K"call", K"dotcall", K"parameters", K"macrocall", K"tuple")
         && !space_before && !space_after)
 
         add_attribute!(move_right(node), :inhibit_inline_space_formatting)
@@ -157,6 +171,15 @@ function space_around_binary_operator(node)
                 add_space_after = true
             end
         end
+    elseif node.text in ("^", "::", "//")
+        if !space_before || !space_after
+            if space_before
+                remove_space_before = true
+            end
+            if space_after
+                remove_space_after = true
+            end
+        end
     else
         if !space_before
             add_space_before = true
@@ -173,8 +196,7 @@ function space_around_binary_operator(node)
     add_space_after && insert_space!(parent, index + equals_after + 1)
     if remove_space_after
         i = index + equals_after + 1
-        @assert iskind(parent.children[i], K"Whitespace")
-        delete!(parent.children, i)
+        remove_space!(parent, i)
     end
     if add_space_before
         insert_space!(parent, index - dot_before)
@@ -183,8 +205,7 @@ function space_around_binary_operator(node)
 
     if remove_space_before
         i = index - dot_before - 1
-        @assert iskind(parent.children[i], K"Whitespace")
-        delete!(parent.children, i)
+        remove_space!(parent, i)
         index -= 1
     end
 
@@ -193,6 +214,12 @@ end
 
 function insert_space!(node, index)
     insert_leaf_node!(node, index, K"Whitespace", " ")
+    return
+end
+
+function remove_space!(parent, index)
+    @assert iskind(parent.children[index], K"Whitespace")
+    remove_child!(parent, index)
     return
 end
 
