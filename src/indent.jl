@@ -101,7 +101,8 @@ function indent(node)
             end
         end
     end
-    debug && @show (base_indent, num_block_indents)
+    reference_row_number = isnothing(reference_newline_node) ? 1 : reference_newline_node.row + 1
+    debug && @show (base_indent, num_block_indents) reference_row_number
 
     # Search left without descending into subexpressions to identify
     # an opening node for a hanging indent. Count enclosing blocks up
@@ -178,7 +179,7 @@ function indent(node)
     while iskind(node′, K"NewlineWs")
         node′ = move_left_no_descent_to_leaf(node′)
     end
-    if !isnothing(opening_node) && (opening_node.row == node′.row || next_is_closing)
+    if !isnothing(opening_node) && (opening_node.row == node′.row || opening_node.row == reference_row_number || next_is_closing)
         hanging_indent = opening_column + node_is_operator(opening_node) - 1 + 4 * num_hanging_block_indents
         debug && @show kind(opening_node) opening_column hanging_indent
         push!(indent_to, hanging_indent)
