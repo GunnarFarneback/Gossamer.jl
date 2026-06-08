@@ -116,6 +116,11 @@ xxxxxx =
         z
     end
 ##
+xxxxxx +=
+    f() do y
+        z
+    end
+##
 let x = 1
 x
 end
@@ -586,8 +591,8 @@ while false
 end
 ##
 esc(quote
-    tmp = min(x[$i], x[$j])
-    end)
+tmp = min(x[$i], x[$j])
+end)
 #
 esc(quote
         tmp = min(x[$i], x[$j])
@@ -705,7 +710,7 @@ for x in X
     if x && (
            x == x ||
                 x
-        )
+)
     end
 end
 #
@@ -716,3 +721,12 @@ for x in X
     )
     end
 end
+##
+x = f((x
+       for x in x),
+      init = 0)
+##
+x = f((x
+       for x in x
+       if true),
+      init = 0)

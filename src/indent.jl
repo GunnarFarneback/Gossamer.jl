@@ -15,6 +15,7 @@ function indent(node)
 
     @assert count(==('\n'), node.text) == 1
 
+    debug && println("--------------------------------------------------------")
     # Search left, including descending into subexpressions, for the
     # previous newline. This is only used to determine whether
     # unrelated indentations have the same depth and need to be
@@ -40,19 +41,15 @@ function indent(node)
     in_module = false
     in_first_let_block = false
     in_second_let_block = iskind(node.parent, K"let")
-    if iskind(move_right(node), K"block") && !iskind(move_right_to_leaf(node), K"begin")
-        num_block_indents += 1
-        if !iskind(node.parent, K"let")
-            num_hanging_block_indents += 1
-        end
-    end
-    if iskind(node.parent, K"block") && is_last_sibling(node)
+    block_construction_found = false
+    if iskind(move_right(node), K"end", K"else", K"elseif", K"catch", K"finally")
         num_block_indents -= 1
         num_hanging_block_indents -= 1
     end
     node′ = node
     while !is_root(node′)
-        if iskind(node′.parent, K"block") && is_first_sibling(node′)
+        if is_leaf(node′) && iskind(node′, K"begin", K"while", K"for", K"if", K"let", K"function", K"module", K"do", K"try", K"quote", K"struct")
+            block_construction_found = true
             # 'let' has a somewhat different representation with two
             # blocks.
             if iskind(node′.parent.parent, K"let")
@@ -62,6 +59,7 @@ function indent(node)
                     in_second_let_block = true
                     node′ = node′.parent
                 end
+            elseif iskind(node′, K"for") && iskind(move_right(node′), K"filter")
             else
                 num_block_indents += 1
             end
@@ -170,8 +168,6 @@ function indent(node)
     end
     if iskind(node′, K")", K"]", K"}")
         next_is_closing = true
-    elseif iskind(node′, K"begin", K"end") && node.parent === node′.parent
-        num_block_indents -= 1
     end
 
     debug && @show num_block_indents
@@ -191,7 +187,9 @@ function indent(node)
         if in_incomplete_expression && opening_node === move_left_no_descent_to_leaf(node)
         elseif next_node === node
             # Opening delimiter immediately followed by newline.
-            num_block_indents += 1
+            if !block_construction_found
+                num_block_indents += 1
+            end
         elseif !iskind(next_node, K"NewlineWs")
             # Opening delimiter followed by something substantial.
             prefer_hanging_indent = true
@@ -204,9 +202,13 @@ function indent(node)
         end
     end
 
+    extra_indent_from_continued_operator = false
     if in_incomplete_expression
         if !has_attribute(reference_newline_node, :continued_operator)
-            num_block_indents += 1
+            if !block_construction_found
+                num_block_indents += 1
+                extra_indent_from_continued_operator = true
+            end
         end
         add_attribute!(node, :continued_operator)
     end
@@ -217,19 +219,6 @@ function indent(node)
 
     if !isnothing(opening_node) && iskind(opening_node, K"import", K"using", K"export", K"public")
         num_block_indents += 0
-    end
-
-    # It's a weird case to break the line between `function` and it's
-    # name, but do a basic indent if it happens.
-    if iskind(move_left(node), K"function")
-        num_block_indents += 1
-        add_attribute!(node, :extra_indent)
-    end
-
-    # Undo the extra indentation from above when we get into the child
-    # block.
-    if has_attribute(reference_newline_node, :extra_indent)
-        num_block_indents -= 1
     end
 
     # Indentation without consideration of hanging indent.
@@ -248,6 +237,10 @@ function indent(node)
     if in_module
         push!(indent_to, base_indent + 4 * (num_block_indents + 1))
     end
+    if !isnothing(opening_node) && extra_indent_from_continued_operator
+        push!(indent_to, left_indent - 4)
+    end
+
     debug && @show indent_to
 
     # Get rid of negative indentations. Shouldn't be here but if they
