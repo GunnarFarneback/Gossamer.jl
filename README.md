@@ -22,11 +22,12 @@ provides configurability and line-length sensitive formatting.
 ## Installation
 
 Gossamer requires Julia 1.12 or later and is intended to be run as a
-command line interface. Install it with
+command line interface. Install the `gossamer` command line interface
+with
 
 ```
 using Pkg
-Pkg.Apps.add("Gossamer")
+Pkg.Apps.add(url = "https://github.com/GunnarFarneback/Gossamer.jl.git")
 ```
 
 As is common for Julia Apps, you also need to have `~/.julia/bin` in
@@ -34,5 +35,25 @@ your PATH.
 
 ## Usage
 
-The command line interface is compatible with Runic and
-JuliaFormatter. For now, see their documentation.
+Run
+```
+gossamer --help
+```
+for usage instructions.
+
+The command line interface is compatible with Runic and JuliaFormatter.
+
+## Examples
+
+Format a single file and write the output to terminal:
+
+```
+gossamer src/Gossamer.jl
+```
+
+Check what changes `gossamer` would make to all Julia source files in
+a directory, shown as a git diff.
+
+```
+gossamer -cdv src
+```

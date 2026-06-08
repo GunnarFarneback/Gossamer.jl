@@ -1,5 +1,5 @@
 function format_string(s::AbstractString)
-    node = parse_string("", s)
+    node = parse_string(s)
     format_node!(node)
     return write_node(node)
 end
@@ -12,6 +12,7 @@ function format_node!(node::Node, parent::Node = node)
         child = node.children[i]
         space_after_comma(child)
         i = space_around_binary_operator(child)
+        space_after_comment(child)
         i += indent(child)
         format_node!(child, node)
         i += 1
@@ -73,6 +74,7 @@ function space_around_binary_operator(node)
     iskind(node, K".") && return index
 
     space_before = false
+    space_node_before = nothing
     nonspace_before = false
     dot_before = false
     op_before = false
@@ -80,6 +82,7 @@ function space_around_binary_operator(node)
         sibling = parent.children[i]
         if iskind(sibling, K"Whitespace", K"NewlineWs")
             space_before = true
+            space_node_before = sibling
         elseif i == index - 1 && iskind(sibling, K".") && is_leaf(sibling)
             dot_before = true
         elseif i == index - 1 && node_is_operator(sibling)
@@ -93,29 +96,34 @@ function space_around_binary_operator(node)
     op_before && return index
 
     space_after = false
+    space_node_after = nothing
     nonspace_after = false
     equals_after = false
     comma_after = false
     op_after = false
     closing_after = false
-    for i in (index + 1):length(parent.children)
-        sibling = parent.children[i]
-        if i == index + 1 && iskind(sibling, K"=")
-            equals_after = true
-        elseif i == index + 1 && node_is_operator(sibling)
-            op_after = true
-        elseif iskind(sibling, K"Whitespace", K"NewlineWs")
-            space_after = true
-        elseif iskind(sibling, K",", K";", K"parameters")
-            comma_after = true
-        elseif iskind(sibling, K")", K"]", K"}")
-            closing_after = true
-        else
-            if node_starts_with_whitespace(parent.children[i])
+    if !is_last_sibling(node)
+        node′ = move_right_to_leaf(node)
+        directly_after = true
+        while true
+            if directly_after && iskind(node′, K"=")
+                equals_after = true
+            elseif directly_after && node_is_operator(node′)
+                op_after = true
+            elseif iskind(node′, K"Whitespace", K"NewlineWs")
                 space_after = true
+                space_node_after = node′
+            elseif iskind(node′, K",", K";", K"parameters")
+                comma_after = true
+            elseif iskind(node′, K")", K"]", K"}")
+                closing_after = true
+            else
+                nonspace_after = true
+                break
             end
-            nonspace_after = true
-            break
+            is_last_sibling(node′) && break
+            node′ = move_right_to_leaf(node′)
+            directly_after = false
         end
     end
 
@@ -124,7 +132,7 @@ function space_around_binary_operator(node)
     # Process .op when we get to op.
     iskind(node, K".") && op_after && return index
 
-    node.text in ("^", "::", "//") && !space_before && !space_after && return index
+    node.text in ("^", "::", "//", "<:") && !space_before && !space_after && return index
 
     if node.text == "::" && space_before && !space_after
         # Accept this inside struct definitions. It occurs in the
@@ -194,22 +202,31 @@ function space_around_binary_operator(node)
     @assert !(add_space_after && remove_space_after)
 
     add_space_after && insert_space!(parent, index + equals_after + 1)
-    if remove_space_after
-        i = index + equals_after + 1
-        remove_space!(parent, i)
-    end
+    remove_space_after && remove_space!(space_node_after)
     if add_space_before
         insert_space!(parent, index - dot_before)
         index += 1
     end
 
     if remove_space_before
-        i = index - dot_before - 1
-        remove_space!(parent, i)
+        remove_space!(space_node_before)
         index -= 1
     end
 
     return index
+end
+
+function space_after_comment(node)
+    iskind(node, K"Comment") || return
+    next = move_right(node)
+    if is_root(next) || iskind(next, K"NewlineWs")
+        node.text = rstrip(node.text, (' ', '\t'))
+    end
+    if contains(node.text, "\n")
+        node.text = join((rstrip(line, (' ', '\t'))
+                          for line in eachsplit(node.text, '\n')),
+                         '\n')
+    end
 end
 
 function insert_space!(node, index)
@@ -217,9 +234,13 @@ function insert_space!(node, index)
     return
 end
 
-function remove_space!(parent, index)
-    @assert iskind(parent.children[index], K"Whitespace")
-    remove_child!(parent, index)
+function remove_space!(node)
+    # The code probably looks weird with a linebreak after an operator
+    # that shouldn't have a space, but we don't remove linebreaks, so
+    # just leave it. (Trailing space on a line is handled elsewhere.)
+    iskind(node, K"NewlineWs") && return
+    @assert iskind(node, K"Whitespace")
+    remove_child!(node.parent, node.index)
     return
 end
 
@@ -237,11 +258,4 @@ function node_is_operator(node)
         return node.text in operator_strings
     end
     return JuliaSyntax.is_operator(kind(node))
-end
-
-# TODO: This can be simplified with newer functions in node.jl
-function node_starts_with_whitespace(node)
-    iskind(node, K"Whitespace", K"NewlineWs") && return true
-    is_leaf(node) && return false
-    return node_starts_with_whitespace(first(node.children))
 end

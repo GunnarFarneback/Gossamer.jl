@@ -7,6 +7,11 @@ function indent(node)
         return 0
     end
 
+    # Also trim space from the very end of the file.
+    if iskind(node, K"Whitespace") && is_root(move_right(node))
+        node.text = rstrip(node.text, (' ', '\t'))
+    end
+
     # Otherwise, only consider newline nodes.
     iskind(node, K"NewlineWs") || return 0
 
@@ -42,13 +47,18 @@ function indent(node)
     in_first_let_block = false
     in_second_let_block = iskind(node.parent, K"let")
     block_construction_found = false
-    if iskind(move_right(node), K"end", K"else", K"elseif", K"catch", K"finally")
+    dedent_follows = false
+    if iskind(move_right(node), K"end", K"else", K"elseif",
+              K"catch", K"finally")
         num_block_indents -= 1
         num_hanging_block_indents -= 1
+        dedent_follows = true
     end
     node′ = node
     while !is_root(node′)
-        if is_leaf(node′) && iskind(node′, K"begin", K"while", K"for", K"if", K"let", K"function", K"module", K"do", K"try", K"quote", K"struct")
+        if is_leaf(node′) && iskind(node′, K"begin", K"while", K"for", K"if",
+                                    K"let", K"function", K"module", K"do",
+                                    K"try", K"quote", K"struct", K"macro")
             block_construction_found = true
             # 'let' has a somewhat different representation with two
             # blocks.
@@ -68,7 +78,8 @@ function indent(node)
         if is_leaf(node′) && iskind(node′, K"module")
             in_module = true
             num_block_indents -= 1
-        elseif is_leaf(node′) && iskind(node′, K")") && iskind(node′.parent, K"call", K"dotcall")
+        elseif (is_leaf(node′) && iskind(node′, K")")
+                && iskind(node′.parent, K"call", K"dotcall"))
             while !iskind(node′, K"(")
                 node′ = move_left_no_descent_to_leaf(node′)
             end
@@ -80,7 +91,7 @@ function indent(node)
             # don't reindent first column comments so need to search
             # past them. Likewise skip whitespace only lines, which
             # should normally be empty.
-            if true || !iskind(move_right_to_leaf(node′), K"Comment", K"NewlineWs")
+            if !is_next_line_not_indented(node′)
                 reference_newline_node = node′
                 base_indent = indentation_of_node(node′)
                 break
@@ -89,11 +100,14 @@ function indent(node)
             if first(node′.children) === previous_newline_node
                 previous_newline_in_reference_path = true
             end
-            if !(iskind(node′, K"tuple") && iskind(node′.parent, K"do")) && !iskind(node′, K"block")
+            if !iskind(node′, K"block") && !(iskind(node′, K"tuple")
+                                             && iskind(node′.parent, K"do"))
                 # Sometimes the relevant newline is the first child of a
                 # node rather than preceding it.
                 first_child = first(node′.children)
-                if first_child !== node && iskind(first_child, K"NewlineWs")
+                if (first_child !== node && iskind(first_child, K"NewlineWs")
+                    && !is_next_line_not_indented(first_child))
+
                     reference_newline_node = first_child
                     base_indent = indentation_of_node(first_child)
                     break
@@ -101,7 +115,8 @@ function indent(node)
             end
         end
     end
-    reference_row_number = isnothing(reference_newline_node) ? 1 : reference_newline_node.row + 1
+    reference_row_number = isnothing(reference_newline_node) ?
+                           1 : reference_newline_node.row + 1
     debug && @show (base_indent, num_block_indents) reference_row_number
 
     # Search left without descending into subexpressions to identify
@@ -125,11 +140,16 @@ function indent(node)
             # in the `do` function call, which would confuse us.
             node′ = node′.parent
         end
-        if (iskind(node′, K"(", K"[", K"{", K"let") || iskind(node′, K"=", K"import", K"using", K"export", K"public", K"return")) && is_leaf(node′)
+        if is_leaf(node′) && (iskind(node′, K"(", K"[", K"{", K"let")
+                              || iskind(node′, K"=", K"import", K"using",
+                                        K"export", K"public", K"return"))
             opening_node = node′
-            opening_column = opening_node.column + length(node′.text) + iskind(node′, K"let", K"import", K"using", K"export", K"public", K"return")
+            opening_column = (opening_node.column + length(node′.text)
+                              + iskind(node′, K"let", K"import", K"using",
+                                       K"export", K"public", K"return"))
             debug && @show opening_node.column length(node′.text)
-            if iskind(node′, K"import", K"using", K"export", K"public", K"return")
+            if iskind(node′, K"import", K"using", K"export", K"public",
+                      K"return")
                 opening_is_import_like = true
             end
             break
@@ -153,11 +173,22 @@ function indent(node)
     debug && @show num_hanging_block_indents
 
     in_incomplete_expression = false
-    node′ = move_left_no_descent_to_leaf(node)
-    if node_is_operator(node′) || opening_is_import_like || (!isnothing(opening_node) && iskind(opening_node, K"for"))
-        if move_right_to_leaf(node′) === node
-            in_incomplete_expression = true
+    if !isnothing(previous_newline_node) && has_attribute(previous_newline_node, :in_incomplete_expression)
+        in_incomplete_expression = true
+    else
+        node′ = move_left_no_descent_to_leaf(node)
+        if (node_is_operator(node′) || opening_is_import_like
+            || (!isnothing(opening_node) && iskind(opening_node, K"for")))
+
+            if move_right_to_leaf(node′) === node
+                in_incomplete_expression = true
+            end
         end
+    end
+    if (in_incomplete_expression
+        && is_next_line_not_indented(node))
+
+        add_attribute!(node, :in_incomplete_expression)
     end
     debug && @show in_incomplete_expression
 
@@ -179,28 +210,45 @@ function indent(node)
     while iskind(node′, K"NewlineWs")
         node′ = move_left_no_descent_to_leaf(node′)
     end
-    if !isnothing(opening_node) && (opening_node.row == node′.row || opening_node.row == reference_row_number || next_is_closing)
-        hanging_indent = opening_column + node_is_operator(opening_node) - 1 + 4 * num_hanging_block_indents
+    if !isnothing(opening_node) && (opening_node.row == node′.row
+                                    || opening_node.row == reference_row_number
+                                    || next_is_closing)
+        hanging_indent = (opening_column + node_is_operator(opening_node) - 1
+                          + 4 * num_hanging_block_indents)
         debug && @show kind(opening_node) opening_column hanging_indent
         push!(indent_to, hanging_indent)
         next_node = move_right_to_leaf(opening_node)
         debug && @show in_incomplete_expression reference_newline_node
-        if in_incomplete_expression && opening_node === move_left_no_descent_to_leaf(node)
-        elseif next_node === node
+        if (in_incomplete_expression
+            && opening_node === move_left_no_descent_to_leaf(node))
+
+        elseif next_node === node || (iskind(opening_node, K"(")
+                                      && iskind(next_node, K";")
+                                      && move_right(next_node) === node)
             # Opening delimiter immediately followed by newline.
             if !block_construction_found
                 num_block_indents += 1
             end
-        elseif !iskind(next_node, K"NewlineWs")
+        elseif (!iskind(next_node, K"NewlineWs")
+                && !(iskind(opening_node, K"(") && iskind(next_node, K";")
+                     && iskind(move_right(next_node), K"NewlineWs")))
             # Opening delimiter followed by something substantial.
-            prefer_hanging_indent = true
+            if opening_node.row == reference_row_number || next_is_closing
+                prefer_hanging_indent = true
+                if !block_construction_found && !dedent_follows
+                    num_block_indents += 1
+                end
+            end
         end
         if opening_is_import_like && colon_column >= 0
             pushfirst!(indent_to, colon_column)
         end
-        if ternary_column >= 0
-            pushfirst!(indent_to, ternary_column)
-        end
+    end
+
+    if (ternary_column >= 0 && iskind(move_left(node), K":")
+        && iskind(node.parent, K"?"))
+
+        pushfirst!(indent_to, ternary_column)
     end
 
     extra_indent_from_continued_operator = false
@@ -216,10 +264,6 @@ function indent(node)
 
     if in_second_let_block
         prefer_hanging_indent = false
-    end
-
-    if !isnothing(opening_node) && iskind(opening_node, K"import", K"using", K"export", K"public")
-        num_block_indents += 0
     end
 
     # Indentation without consideration of hanging indent.
@@ -260,13 +304,14 @@ function indent(node)
         set_attribute!(node, :nominal_indent, first(indent_to))
         # Do not indent lines starting with `#` in the first column.
         # Do not indent multiline strings or commands.
-        if !is_first_column_comment(move_right(node)) &&
+        if !is_not_indented_comment(move_right(node)) &&
             !is_multiline_string_or_cmd(move_right(node))
 
             node.text = string("\n", " "^first(indent_to))
             node.text *= exotic_spaces
             if node.text != reference_text
-                update_column_for_rest_of_row(move_right(node), first(indent_to) + 1)
+                update_column_for_rest_of_row(move_right(node),
+                                              first(indent_to) + 1)
             end
         end
     end
@@ -291,15 +336,32 @@ function indent(node)
 
             # Additionally only add a line if this is at the start of
             # a block and the block is not empty.
-            if (iskind(move_left(node), K"block") || iskind(move_right(node), K"block")) && length(node.parent.children) > 1 && !iskind(move_left_to_leaf(node), K"end", K")", K"]", K"}")
-                debug && @show "inserting!"
-                insert_leaf_node!(node.parent, node.index, K"NewlineWs", "\n")
-                return 1
+            if ((iskind(move_left(node), K"block")
+                 || iskind(move_right(node), K"block"))
+                && length(node.parent.children) > 1)
+
+                prev = move_left_to_leaf(node)
+                if !(iskind(prev, K"end", K")", K"]", K"}")
+                     && is_first_on_line(prev))
+
+                    debug && @show "inserting!"
+                    insert_leaf_node!(node.parent, node.index, K"NewlineWs", "\n")
+                    return 1
+                end
             end
         end
     end
 
     return 0
+end
+
+# Is node first on its line, whitespace excluded?
+function is_first_on_line(node)
+    node′ = move_left(node)
+    if iskind(node′, K"Whitespace")
+        node′ = move_left(node′)
+    end
+    return is_root(node′) || iskind(node′, K"NewlineWs")
 end
 
 function indentation_of_node(node)
@@ -316,7 +378,14 @@ function indentation_of_node(node)
     return node′.column - 1
 end
 
-is_first_column_comment(node) = node.column == 1 && iskind(node, K"Comment")
+# We don't indent comments if they start in the first column or span
+# multiple lines.
+function is_not_indented_comment(node)
+    iskind(node, K"Comment") || return false
+    node.column == 1 && return true
+    contains(node.text, "\n") && return true
+    return false
+end
 
 function is_multiline_string_or_cmd(node)
     if iskind(node, K"macrocall")
@@ -327,6 +396,27 @@ function is_multiline_string_or_cmd(node)
     iskind(node, K"string", K"cmdstring") || return false
     node = node.children[1]
     return iskind(node, K"\"\"\"", K"```")
+end
+
+# Determine whether a NewlineWs node starts a line not subject to
+# indentation.
+#
+# This includes:
+# * Empty lines.
+# * Lines with only whitespace.
+# * Lines with a comment starting in the first column.
+# * Lines starting (whitespace excluded) with a comment spanning
+#   multiple lines.
+function is_next_line_not_indented(node)
+    @assert iskind(node, K"NewlineWs")
+    node′ = move_right(node)
+    while node′.row == node.row + 1
+        if !iskind(node′, K"NewlineWs") && !is_not_indented_comment(node′)
+            return false
+        end
+        node′ = move_right(node′)
+    end
+    return true
 end
 
 # * Remove all space before newline, i.e. trailing space, and update

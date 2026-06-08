@@ -75,7 +75,7 @@ function format_file(filename, content, index, number_of_files, options)
 
     node = nothing
     try
-        node = parse_string(filename, content)
+        node = parse_string(content)
     catch e
         if e isa JuliaSyntax.ParseError
             showerror(stderr, e)

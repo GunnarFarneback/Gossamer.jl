@@ -45,7 +45,7 @@ function split_tests(filename)
     start_line = 0
     text = String[]
     for (line_number, line) in enumerate(vcat(readlines(filename), "##"))
-        if startswith(line, "##")
+        if startswith(line, "##") && !startswith(line, "###")
             if !isempty(text)
                 push!(tests, (start_line, join(text, "\n")))
                 start_line = 0
@@ -65,7 +65,8 @@ end
 # Tests defined by the files in test/data.
 #
 # The semantics of those files are
-# * Cases are split by one or more consecutive lines starting with `##`.
+# * Cases are split by one or more consecutive lines starting with `##`
+#   but not starting with `###`.
 #   * There may be comment text on those lines.
 # * If a case contains a line with a single `#`:
 #   * The part before should be formatted into the part after.

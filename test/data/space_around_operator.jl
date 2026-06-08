@@ -45,8 +45,14 @@ x.<<=y
 x .<<= y
 ##
 T<:Int
-#
+##
 T <: Int
+##
+function f(x::T) where T<:Integer
+end
+##
+function f(x::T) where T <: Integer
+end
 ##
 reduce(+, x)
 ##

@@ -104,8 +104,8 @@ function green_to_node(green::GreenNode, raw::AbstractString, pos::Int = 1,
     return node, row, column
 end
 
-function parse_string(filename::AbstractString, raw)
-    green = parseall(GreenNode, raw; filename, ignore_warnings = true)
+function parse_string(raw)
+    green = parseall(GreenNode, raw; filename = "", ignore_warnings = true)
     node, _, _ = green_to_node(green, raw)
     return node
 end

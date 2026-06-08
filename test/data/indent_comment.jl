@@ -22,7 +22,12 @@ end
 ## will likely not turn out nicely.
 if true
 #    false
-# 
 #    !false
     true
+end
+## Also make an exception for multi-line comments.
+if true
+ #=
+
+ =#
 end

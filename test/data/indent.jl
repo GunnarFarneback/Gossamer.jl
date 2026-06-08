@@ -370,6 +370,9 @@ yyy = x ? 1 :
 yyy = x ? 1 :
     2
 ##
+xx ? x :
+     x
+##
 xxxxxxxxxxxxx =
     yyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy =
     zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz =
@@ -511,6 +514,22 @@ Dict(x
          y in Y
      if true)
 ##
+yy = Dict(x
+          for x in X)
+##
+yy = Dict(x
+          for x in X
+          if true)
+##
+yy = Dict(x
+          for x in X,
+              y in Y)
+##
+yy = Dict(x
+          for x in X,
+              y in Y
+          if true)
+##
 if true &&
 !false
 x
@@ -522,8 +541,14 @@ if true &&
     x
 end
 ##
-y = f() do x
+yyy = f() do x
     x
+
+    x
+end
+##
+yyy = f() do x
+    g(x)
 
     x
 end
@@ -605,8 +630,8 @@ ex = quote
 end
 ##
 y = (x
-    + a * x
-    + x)
++ a * x
++ x)
 #
 y = (x
      + a * x
@@ -730,3 +755,127 @@ x = f((x
        for x in x
        if true),
       init = 0)
+##
+macro m(x)
+esc(x)
+end
+#
+macro m(x)
+    esc(x)
+end
+##
+fffffff(;
+a = 1,
+b = 2
+)
+#
+fffffff(;
+    a = 1,
+    b = 2
+)
+##
+fffffff(; a = 1,
+b = 2)
+#
+fffffff(; a = 1,
+        b = 2)
+##
+y = (;
+x
+)
+#
+y = (;
+    x
+)
+##
+function f()
+    yy =
+        x ? x :
+        #
+        x ? x :
+
+        x ? x : y
+end
+##
+function f1()
+    yy =
+        x ? x :
+        #
+        x ? x :
+         x ? x : y
+end
+#
+function f1()
+    yy =
+        x ? x :
+        #
+        x ? x :
+            x ? x : y
+end
+##
+function f2()
+    yy =
+        x ? x :
+        #
+        x ? x :
+###
+         x ? x : y
+end
+#
+function f2()
+    yy =
+        x ? x :
+        #
+        x ? x :
+###
+            x ? x : y
+end
+##
+function f3()
+    yy =
+        x ? x :
+        #
+        x ? x :
+ #=
+ =#
+         x ? x : y
+end
+#
+function f3()
+    yy =
+        x ? x :
+        #
+        x ? x :
+ #=
+ =#
+            x ? x : y
+end
+##
+if (x
+    || x)
+    if x
+        x
+    end
+end
+#
+if (x
+    || x)
+
+    if x
+        x
+    end
+end
+##
+function f(x)
+    # x
+    f(x; x = [1,
+              1],
+      y = 1)
+end
+#
+function f(x)
+    # x
+    f(x; x = [1,
+              1],
+      y = 1)
+end
