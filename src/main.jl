@@ -1,10 +1,16 @@
 function @main(ARGS)
-    options = parse_options(ARGS)
+    options = try
+        parse_options(ARGS)
+    catch e
+        showerror(stderr, e)
+        println(stderr)
+        return 1
+    end
     return main_loop(options)
 end
 
 function main_loop(options)
-    (; check, diff, inplace, lines, output, stdin_filename, verbose,
+    (; check, diff, help, inplace, lines, output, stdin_filename, verbose,
      version, files) = options
 
     # Ignore all other command line arguments if --version is present.
@@ -13,6 +19,13 @@ function main_loop(options)
         println("gossamer version $(version), julia version $(VERSION)")
         return 0
     end
+
+    if help
+        println(stdout, usage_help)
+        return 0
+    end
+
+    isempty(lines) || return fatal("--lines is not supported yet.")
 
     inplace && !isnothing(output) && return(fatal("options `--inplace` and `--output` are mutually exclusive"))
 
@@ -105,7 +118,7 @@ function format_file(filename, content, index, number_of_files, options)
     if !check
         if inplace
             success || write_node(filename, output)
-        elseif isnothing(output)
+        elseif isnothing(output) || output == "-"
             write_node(stdout, node)
         else
             write_node(output, node)
