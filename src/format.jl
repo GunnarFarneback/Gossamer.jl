@@ -4,6 +4,8 @@ function format_string(s::AbstractString)
     return write_node(node)
 end
 
+# TODO: Rewrite with an explicit stack to be able to handle
+# pathological code.
 function format_node!(node::Node, parent::Node = node)
     i = 1
     inhibit_node_recursion(node) && return
@@ -53,6 +55,8 @@ function space_after_comma(node)
                 # Swap ` ,` to `, `.
                 node.head, prev.head = prev.head, node.head
                 node.text, prev.text = prev.text, node.text
+                node.column_is_current = false
+                prev.column_is_current = false
             else
                 insert_space!(node.parent, node.index + 1)
             end
@@ -218,6 +222,7 @@ end
 
 function space_after_comment(node)
     iskind(node, K"Comment") || return
+    reference_text = node.text
     next = move_right(node)
     if is_root(next) || iskind(next, K"NewlineWs")
         node.text = rstrip(node.text, (' ', '\t'))
@@ -226,6 +231,9 @@ function space_after_comment(node)
         node.text = join((rstrip(line, (' ', '\t'))
                           for line in eachsplit(node.text, '\n')),
                          '\n')
+    end
+    if node.text != reference_text
+        invalidate_column_for_rest_of_row(node)
     end
 end
 

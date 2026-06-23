@@ -2,8 +2,12 @@ debug = false
 
 function indent(node)
     # Special case, trim space from the very start of the file
-    if node.row == 1 && node.column == 1 && iskind(node, K"Whitespace")
+    if node.row == 1 && get_column(node) == 1 && iskind(node, K"Whitespace")
+        reference_text = node.text
         node.text = lstrip(node.text, (' ', '\t'))
+        if node.text != reference_text
+            invalidate_column_for_rest_of_row(node)
+        end
         return 0
     end
 
@@ -144,10 +148,10 @@ function indent(node)
                               || iskind(node′, K"=", K"import", K"using",
                                         K"export", K"public", K"return"))
             opening_node = node′
-            opening_column = (opening_node.column + length(node′.text)
+            opening_column = (get_column(opening_node) + length(node′.text)
                               + iskind(node′, K"let", K"import", K"using",
                                        K"export", K"public", K"return"))
-            debug && @show opening_node.column length(node′.text)
+            debug && @show get_column(opening_node) length(node′.text)
             if iskind(node′, K"import", K"using", K"export", K"public",
                       K"return")
                 opening_is_import_like = true
@@ -156,18 +160,18 @@ function indent(node)
         elseif (iskind(node′.parent, K"iteration") &&
                 iskind(move_left(node′.parent), K"for"))
             opening_node = move_left(node′.parent)
-            opening_column = node′.parent.column + 1
+            opening_column = get_column(node′.parent) + 1
             break
         elseif (iskind(node′.parent, K"iteration") &&
                 iskind(node′.parent.parent, K"filter") &&
                 iskind(move_left(node′.parent.parent), K"for"))
             opening_node = move_left(node′.parent.parent)
-            opening_column = node′.parent.parent.column + 1
+            opening_column = get_column(node′.parent.parent) + 1
             break
         elseif is_leaf(node′) && iskind(node′, K":")
-            colon_column = node′.column + 1
+            colon_column = get_column(node′) + 1
         elseif is_leaf(node′) && iskind(node′, K"?")
-            ternary_column = node′.column + 1
+            ternary_column = get_column(node′) + 1
         end
     end
     debug && @show num_hanging_block_indents
@@ -310,8 +314,7 @@ function indent(node)
             node.text = string("\n", " "^first(indent_to))
             node.text *= exotic_spaces
             if node.text != reference_text
-                update_column_for_rest_of_row(move_right(node),
-                                              first(indent_to) + 1)
+                invalidate_column_for_rest_of_row(node)
             end
         end
     end
@@ -321,7 +324,11 @@ function indent(node)
     prev_node = move_left_to_leaf(node)
 
     if iskind(prev_node, K"NewlineWs")
+        reference_text = prev_node.text
         prev_node.text = "\n" * lstrip(prev_node.text, (' ', '\n', '\t'))
+        if prev_node.text != reference_text
+            invalidate_column_for_rest_of_row(prev_node)
+        end
     elseif true
         # Otherwise, check whether the current indentation is the same
         # as the indentation on the last line. If it is and those
@@ -375,14 +382,14 @@ function indentation_of_node(node)
         return length(node.text[findfirst(==('\n'), node.text):end])
     end
 
-    return node′.column - 1
+    return get_column(node′) - 1
 end
 
 # We don't indent comments if they start in the first column or span
 # multiple lines.
 function is_not_indented_comment(node)
     iskind(node, K"Comment") || return false
-    node.column == 1 && return true
+    get_column(node) == 1 && return true
     contains(node.text, "\n") && return true
     return false
 end
@@ -426,6 +433,7 @@ end
 #   * Tabs found during skipping are converted to space.
 # * Return the remaining space.
 function preprocess_indentation_space!(node)
+    reference_text = node.text
     newline_index = findfirst(==('\n'), node.text)
     node.text = node.text[newline_index:end]
     num_tabs_to_replace = 0
@@ -442,6 +450,9 @@ function preprocess_indentation_space!(node)
     if num_tabs_to_replace > 0
         node.text = replace(node.text, '\t' => ' ';
                             count = num_tabs_to_replace)
+    end
+    if node.text != reference_text
+        invalidate_column_for_rest_of_row(node)
     end
     return exotic_spaces
 end

@@ -10,8 +10,14 @@ mutable struct Node
     # inserted while formatting have row number zero.
     row::Int
     # Starting column in source. Used for determining indentation.
-    # Must always be kept up to date.
+    # Must always be kept up to date, unless `column_is_current` is false.
+    # Use `get_column` to obtain valid information.
     column::Int
+    # Set to false if column information is outdated. If this is false
+    # for a node, it must also be false for all following nodes on the
+    # same row. (This scheme avoids quadratic complexity, e.g. for
+    # long lines of comma-separated values without space.)
+    column_is_current::Bool
     # The source text covered by this node. For non-leaf nodes this is
     # always the original source.
     text::Union{String, SubString{String}}
@@ -28,11 +34,11 @@ mutable struct Node
                   text::Union{String, SubString{String}}, head::SyntaxHead,
                   parent::Union{Nothing, Node})
         if isnothing(parent)
-            node = new(children, index, row, column, text, head,
+            node = new(children, index, row, column, true, text, head,
                        Dict{Symbol, Any}())
             node.parent = node
         else
-            node = new(children, index, row, column, text, head,
+            node = new(children, index, row, column, true, text, head,
                        Dict{Symbol, Any}(), parent)
         end
         return node
@@ -45,7 +51,7 @@ end
 
 function print_node(io::IO, node::Node, indent)
     print(io, lpad(node.row, 5), " ")
-    print(io, lpad(node.column, 5), " ")
+    print(io, lpad(get_column(node), 5), " ")
     if isempty(node.children)
         print(io, rpad(string(" "^indent, kind(node)), 30), " ")
         if kind(node) in [K"Whitespace", K"NewlineWs"]
@@ -227,7 +233,9 @@ function insert_leaf_node!(node, position, kind, text)
     for i in (position + 1):length(node.children)
         node.children[i].index = i
     end
-    update_column_for_rest_of_row(move_left_to_leaf(leaf))
+    invalidate_column_for_rest_of_row(leaf)
+    # Invalidate ourselves too, since we don't have a correct column number.
+    leaf.column_is_current = false
     return leaf
 end
 
@@ -238,16 +246,93 @@ function remove_child!(parent, position)
     for i in position:length(parent.children)
         parent.children[i].index = i
     end
-    update_column_for_rest_of_row(parent)
+    invalidate_column_for_rest_of_row(parent)
     return
 end
 
-function update_column_for_rest_of_row(node, column = node.column)
-    while !is_root(node) && kind(node) != K"NewlineWs"
+function get_column(node)
+    node.column_is_current || update_columns!(node)
+    @assert node.column_is_current
+    return node.column
+end
+
+# Update column numbers for the whole row.
+function update_columns!(node)
+    # First move left until we find a current column or the start of
+    # the row.
+    while !node.column_is_current
+        node′ = move_left(node)
+        if is_root(node′) || contains_newline(node′)
+            break
+        end
+        node = node′
+    end
+
+    # Determine the column of node.
+    if node.column_is_current
+        column = node.column
+    else
+        left = move_left(node)
+        if is_root(node)
+            column = 1
+        else
+            column = 1 + length(last(rsplit(left.text, "\n", limit = 2)))
+        end
+        node.column = column
+        node.column_is_current = true
+    end
+
+    # Update column until the end of the row.
+    while true
+        contains_newline(node) && break
         if is_leaf(node)
-            column = node.column + length(node.text)
+            column += length(node.text)
         end
         node = move_right(node)
+        is_root(node) && break
         node.column = column
+        node.column_is_current = true
     end
+
+    # Verify that column values are good or not current for the whole
+    # tree. This can be very slow on large files and is only intended
+    # to be activated for debugging or occasional sanity checking.
+    if false
+        while !is_root(node)
+            node = node.parent
+        end
+        column = 1
+        while true
+            if node.column_is_current && node.column != column
+                error("Bad column.")
+            end
+            if is_leaf(node)
+                text = node.text
+                if contains(text, "\n")
+                    column = 1 + length(last(rsplit(text, "\n", limit = 2)))
+                else
+                    column += length(text)
+                end
+            end
+            node = move_right(node)
+            is_root(node) && break
+        end
+    end
+end
+
+function invalidate_column_for_rest_of_row(node, column = node.column)
+    while true
+        node = move_right(node)
+        node.column_is_current || break
+        node.column_is_current = false
+        if is_root(node) || contains_newline(node)
+            break
+        end
+    end
+end
+
+function contains_newline(node::Node)
+    iskind(node, K"NewlineWs") && return true
+    iskind(node, K"String", K"Comment") && contains(node.text, "\n") && return true
+    return false
 end
