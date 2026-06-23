@@ -20,6 +20,7 @@ function main_loop(options)
         return 0
     end
 
+    # Likewise for --help.
     if help
         println(stdout, usage_help)
         return 0

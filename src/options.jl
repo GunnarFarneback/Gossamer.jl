@@ -14,7 +14,11 @@ const parser = record((check = flag("-c", "--check"),
                        files = many(arg(str("FILE")))))
 
 function parse_options(args)
+    # Workaround for
+    # https://github.com/ghyatzo/OptParse.jl/issues/9. Can be removed
+    # once OptParse 0.3.1 is released.
     isempty(args) && return optparse(parser, ["--"])
+
     return optparse(parser, args)
 end
 
