@@ -30,20 +30,7 @@ function main_loop(options)
 
     inplace && !isnothing(output) && return(fatal("options `--inplace` and `--output` are mutually exclusive"))
 
-    # Investigate input files.
-    filenames = String[]
-    dir_found = false
-    use_stdin_input = isempty(files)
-    for file in files
-        if file == "-"
-            use_stdin_input = true
-        elseif isfile(file)
-            push!(filenames, file)
-        elseif isdir(file)
-            dir_found = true
-            add_jl_files_recursively!(filenames, file)
-        end
-    end
+    filenames, use_stdin_input = locate_input_files(files)
 
     use_stdin_input && inplace && return fatal("option `--inplace` can not be used together with stdin input")
 
@@ -147,6 +134,22 @@ function show_diff(filename, content, node)
         cmd = `git -C $tmpdir --no-pager diff --color=auto --no-index --no-prefix $rel_a_file $rel_b_file`
         run(pipeline(ignorestatus(cmd), stdout = stderr))
     end
+end
+
+function locate_input_files(files)
+    # Investigate input files.
+    filenames = String[]
+    use_stdin_input = isempty(files)
+    for file in files
+        if file == "-"
+            use_stdin_input = true
+        elseif isfile(file)
+            push!(filenames, file)
+        elseif isdir(file)
+            add_jl_files_recursively!(filenames, file)
+        end
+    end
+    return filenames, use_stdin_input
 end
 
 function add_jl_files_recursively!(filenames, dir)
