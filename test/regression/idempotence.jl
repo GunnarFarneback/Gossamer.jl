@@ -37,7 +37,13 @@ function check_file_for_idempotency(filename, index, number_of_files)
     try
         node = parse_string(content)
     catch e
-        printstyled("?\n", color = :yellow)
+        if !(e isa JuliaSyntax.ParseError)
+            printstyled("?\n", color = :yellow)
+            showerror(stderr, e)
+            println(stderr)
+        else
+            printstyled("?\r", color = :yellow)
+        end
     end
 
     isnothing(node) && return
