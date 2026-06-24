@@ -879,3 +879,51 @@ function f(x)
               1],
       y = 1)
 end
+##
+function f(x;
+           y) where {S,
+                    T}
+end
+#
+function f(x;
+           y) where {S,
+                     T}
+end
+##
+x = [x +
+     x; f(x,
+     x)]
+#
+x = [x +
+     x; f(x,
+          x)]
+##
+f(x,
+y) = g(x,
+x)
+#
+f(x,
+  y) = g(x,
+         x)
+##
+function f()
+if true
+    g() do
+        yyy = h() do
+           x()
+         end
+        return y
+    end
+end
+end
+#
+function f()
+    if true
+        g() do
+            yyy = h() do
+                x()
+            end
+            return y
+        end
+    end
+end

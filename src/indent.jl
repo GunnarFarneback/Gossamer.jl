@@ -237,7 +237,7 @@ function indent(node)
                 && !(iskind(opening_node, K"(") && iskind(next_node, K";")
                      && iskind(move_right(next_node), K"NewlineWs")))
             # Opening delimiter followed by something substantial.
-            if opening_node.row == reference_row_number || next_is_closing
+            if opening_node.row >= reference_row_number || next_is_closing
                 prefer_hanging_indent = true
                 if !block_construction_found && !dedent_follows
                     num_block_indents += 1
