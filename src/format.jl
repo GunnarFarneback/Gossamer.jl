@@ -46,11 +46,8 @@ function space_after_comma(node)
     has_attribute(node, :inhibit_inline_space_formatting) && return
     prev = move_left_to_leaf(node)
     next = move_right_to_leaf(node)
-    if (iskind(node, K",", K";") &&
-        iskind(node.parent, K"call", K"tuple", K"parameters", K"braces",
-               K"vect", K"ref", K"curly"))
-
-        if !(is_whitespace(next) || iskind(next, K")") || iskind(prev, K"("))
+    if iskind(node, K",", K";")
+        if !(is_whitespace(next) || iskind(next, K")", K"]", K"}", K",", K";") || iskind(prev, K"(", K"[", K"{"))
             if node.index > 1 && iskind(prev, K"Whitespace")
                 # Swap ` ,` to `, `.
                 node.head, prev.head = prev.head, node.head

@@ -92,12 +92,40 @@ f[x, y] = Int[1, 2]
 ##
 [f(x,y);g(x,y,z)]
 #
-[f(x, y);g(x, y, z)]
+[f(x, y); g(x, y, z)]
 ## Assume this is an ordering typo and swap it.
 f(x ,y)
 #
 f(x, y)
+## This too.
+f(x ;y)
+#
+f(x; y)
+## And this, although it's a weird case.
+f(x, ;y)
+#
+f(x,; y)
 ##
 Array{T,2}
 #
 Array{T, 2}
+##
+a=1;b=2
+#
+a = 1; b = 2
+##
+print(1);println(2)
+#
+print(1); println(2)
+##
+x = [1 ;; 2]
+##
+import a,b
+#
+import a, b
+##
+x = [1, 2,]
+##
+global a,b
+#
+global a, b
