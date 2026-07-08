@@ -927,3 +927,19 @@ function f()
         end
     end
 end
+##
+function f()
+  x = if y
+    z
+  else
+    z
+  end
+end
+#
+function f()
+    x = if y
+        z
+    else
+        z
+    end
+end
