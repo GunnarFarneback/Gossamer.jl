@@ -208,40 +208,33 @@ function indent(node)
 
     debug && @show num_block_indents
     indent_to = Int[]
-    prefer_hanging_indent = false
-    # Hanging indent.
-    node′ = node
-    while iskind(node′, K"NewlineWs")
-        node′ = move_left_no_descent_to_leaf(node′)
-    end
-    if !isnothing(opening_node) && (opening_node.row == node′.row
-                                    || opening_node.row == reference_row_number
-                                    || next_is_closing)
-        hanging_indent = (opening_column + node_is_operator(opening_node) - 1
-                          + 4 * num_hanging_block_indents)
-        debug && @show kind(opening_node) opening_column hanging_indent
-        push!(indent_to, hanging_indent)
-        next_node = move_right_to_leaf(opening_node)
-        debug && @show in_incomplete_expression reference_newline_node
-        if (in_incomplete_expression
-            && opening_node === move_left_no_descent_to_leaf(node))
 
-        elseif next_node === node || (iskind(opening_node, K"(")
-                                      && iskind(next_node, K";")
-                                      && move_right(next_node) === node)
-            # Opening delimiter immediately followed by newline.
-            if !block_construction_found
-                num_block_indents += 1
-            end
-        elseif (!iskind(next_node, K"NewlineWs")
-                && !(iskind(opening_node, K"(") && iskind(next_node, K";")
-                     && iskind(move_right(next_node), K"NewlineWs")))
-            # Opening delimiter followed by something substantial.
-            if opening_node.row >= reference_row_number || next_is_closing
-                # if !iskind(opening_node, K"=") || !iskind(node′, K"begin", K"if", K"elseif", K"else", K"let", K"do", K"try", K"catch", K"finally")
-                    prefer_hanging_indent = true
-                # end
-                if !block_construction_found && !dedent_follows
+    # Hanging indent.
+    prefer_hanging_indent = false
+    if !isnothing(opening_node)
+        node′ = node
+        while iskind(node′, K"NewlineWs")
+            node′ = move_left_no_descent_to_leaf(node′)
+        end
+
+        if (opening_node.row == node′.row
+            || opening_node.row == reference_row_number
+            || next_is_closing)
+
+            hanging_indent = (opening_column + node_is_operator(opening_node) - 1
+                              + 4 * num_hanging_block_indents)
+            debug && @show kind(opening_node) opening_column hanging_indent
+            push!(indent_to, hanging_indent)
+            next_node = move_right_to_leaf(opening_node)
+            debug && @show in_incomplete_expression reference_newline_node
+            if (in_incomplete_expression
+                && opening_node === move_left_no_descent_to_leaf(node))
+
+            elseif next_node === node || (iskind(opening_node, K"(")
+                                          && iskind(next_node, K";")
+                                          && move_right(next_node) === node)
+                # Opening delimiter immediately followed by newline.
+                if !block_construction_found
                     num_block_indents += 1
                 end
             elseif (!iskind(next_node, K"NewlineWs")
@@ -261,9 +254,6 @@ function indent(node)
             if opening_is_import_like && colon_column >= 0
                 pushfirst!(indent_to, colon_column)
             end
-        end
-        if opening_is_import_like && colon_column >= 0
-            pushfirst!(indent_to, colon_column)
         end
     end
 
