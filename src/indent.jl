@@ -238,10 +238,28 @@ function indent(node)
                      && iskind(move_right(next_node), K"NewlineWs")))
             # Opening delimiter followed by something substantial.
             if opening_node.row >= reference_row_number || next_is_closing
-                prefer_hanging_indent = true
+                # if !iskind(opening_node, K"=") || !iskind(node′, K"begin", K"if", K"elseif", K"else", K"let", K"do", K"try", K"catch", K"finally")
+                    prefer_hanging_indent = true
+                # end
                 if !block_construction_found && !dedent_follows
                     num_block_indents += 1
                 end
+            elseif (!iskind(next_node, K"NewlineWs")
+                    && !(iskind(opening_node, K"(") && iskind(next_node, K";")
+                         && iskind(move_right(next_node), K"NewlineWs")))
+                # Opening delimiter followed by something substantial.
+                if opening_node.row >= reference_row_number || next_is_closing
+                    # if !iskind(opening_node, K"=") || !iskind(node′, K"begin", K"if", K"elseif", K"else", K"let", K"do", K"try", K"catch", K"finally")
+                    if true
+                        prefer_hanging_indent = true
+                    end
+                    if !block_construction_found && !dedent_follows
+                        num_block_indents += 1
+                    end
+                end
+            end
+            if opening_is_import_like && colon_column >= 0
+                pushfirst!(indent_to, colon_column)
             end
         end
         if opening_is_import_like && colon_column >= 0
