@@ -4,20 +4,24 @@ function format_string(s::AbstractString)
     return write_node(node)
 end
 
-# TODO: Rewrite with an explicit stack to be able to handle
-# pathological code.
+# This is written with an explicit stack instead of recursion to be
+# able to handle pathological code. However, it turns out that
+# JuliaSyntax fails in its recursion for deeply nested code, so for
+# now we don't get to handle such cases here.
 function format_node!(node::Node, parent::Node = node)
-    i = 1
-    inhibit_node_recursion(node) && return
-    propagate_inline_space_inhibition(node)
-    while i <= length(node.children)
+    stack = [(node, 1)]
+    while !isempty(stack)
+        node, i = pop!(stack)
+        inhibit_node_recursion(node) && continue
+        propagate_inline_space_inhibition(node)
+        i > length(node.children) && continue
         child = node.children[i]
         space_after_comma(child)
         i = space_around_binary_operator(child)
         space_after_comment(child)
         i += indent(child)
-        format_node!(child, node)
-        i += 1
+        push!(stack, (node, i + 1))
+        push!(stack, (child, 1))
     end
     return
 end
