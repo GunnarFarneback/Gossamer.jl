@@ -3,6 +3,8 @@ using JuliaSyntax: JuliaSyntax, parseall, GreenNode, SyntaxHead, @K_str
 mutable struct Node
     # Empty for leaf nodes.
     children::Vector{Node}
+    # Cached value of isempty(children), for faster lookup.
+    is_leaf::Bool
     # Sibling index. Unless `node` is the root node, it must always
     # hold that `node === node.parent[node.index]`.
     index::Int
@@ -34,11 +36,11 @@ mutable struct Node
                   text::Union{String, SubString{String}}, head::SyntaxHead,
                   parent::Union{Nothing, Node})
         if isnothing(parent)
-            node = new(children, index, row, column, true, text, head,
+            node = new(children, true, index, row, column, true, text, head,
                        Dict{Symbol, Any}())
             node.parent = node
         else
-            node = new(children, index, row, column, true, text, head,
+            node = new(children, true, index, row, column, true, text, head,
                        Dict{Symbol, Any}(), parent)
         end
         return node
@@ -71,7 +73,7 @@ end
 kind(node::Node) = JuliaSyntax.kind(node.head)
 iskind(node::Node, kinds::JuliaSyntax.Kind...) = any(==(kind(node)), kinds)
 is_root(node) = node.parent === node
-is_leaf(node) = isempty(node.children)
+is_leaf(node) = node.is_leaf
 is_whitespace(node) = iskind(node, K"Whitespace", K"NewlineWs")
 is_literal(node) = JuliaSyntax.is_literal(kind(node))
 is_first_sibling(node) = first(node.parent.children) === node
@@ -99,6 +101,7 @@ function green_to_node(green::GreenNode, raw::AbstractString, pos::Int = 1,
             push!(children, child)
             pos += green_child.span
         end
+        node.is_leaf = isempty(children)
     else
         if contains(text, "\n")
             row += count(==('\n'), text)
@@ -239,6 +242,8 @@ function insert_leaf_node!(node, position, kind, text)
     return leaf
 end
 
+# It is assumed that this will never remove the last child of a
+# node. If it did it would need to also update node.is_leaf.
 function remove_child!(parent, position)
     deleteat!(parent.children, position)
     # Child has been removed, but we must update sibling indices and
