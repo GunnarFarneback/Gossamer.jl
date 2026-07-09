@@ -6,6 +6,8 @@ using Gossamer: locate_input_files, parse_string, format_node!, write_node,
                 show_diff
 import JuliaSyntax
 
+include("ignore.jl")
+
 function main(args)
     if length(args) < 1
         println(stderr, "Usage: julia idempotence.jl paths...")
@@ -15,6 +17,7 @@ function main(args)
     filenames, use_stdin_input = locate_input_files(args)
     use_stdin_input && return Gossamer.fatal("stdin input not supported for idempotence checking")
     for (index, filename) in enumerate(filenames)
+        file_causes_stack_overflow(filename) && continue
         check_file_for_idempotency(filename, index, length(filenames))
     end
     println(" "^80, "\r")

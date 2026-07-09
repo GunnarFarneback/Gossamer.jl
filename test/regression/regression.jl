@@ -7,6 +7,8 @@ using Gossamer: locate_input_files, parse_string, format_node!, write_node,
 import JuliaSyntax
 using ReferenceRevision: open_process
 
+include("ignore.jl")
+
 function main(args)
     if length(args) < 2
         println(stderr, "Usage: julia regression.jl revision [--summary] paths...")
@@ -23,6 +25,7 @@ function main(args)
     filenames, use_stdin_input = locate_input_files(files)
     use_stdin_input && return Gossamer.fatal("stdin input not supported for regression")
     for (index, filename) in enumerate(filenames)
+        file_causes_stack_overflow(filename) && continue
         check_file_for_regressions(reference.Gossamer, filename, index,
                                    length(filenames), summary)
     end
