@@ -28,37 +28,45 @@ function format_node!(node::Node, parent::Node = node)
 end
 
 function analyze_tree!(tree::Node)
-    stack = [(tree, 1, Node[], -1, -1)]
+    stack = [(tree, 1, Node[], Node[], Node[], 0)]
     while !isempty(stack)
         # println("stack:")
         # for (a,b,c) in stack
         #     println("  ", b, " (", a.row, ", ", a.column, ", ", kind(a), ")    (", c.row, ", ", c.column, ", ", kind(c), ")")
         # end
         # println("------")
-        node, i, openings, colon_column, ternary_column = pop!(stack)
+        node, i, openings, colon_nodes, ternary_nodes, hanging_indents =
+            pop!(stack)
         i > length(node.children) && continue
         child = node.children[i]
         # println("(", node.row, ", ", node.column, ", ", kind(node), ")    (", opening.row, ", ", opening.column, ", ", kind(opening), ")")
+        if i == 1 && iskind(node, K"block") && !iskind(node.parent, K"let")
+            hanging_indents += 1
+        end
         if is_leaf(child)
             if iskind(child, K"NewlineWs")
+                #@show child hanging_indents
                 #println("Set attribute to ", kind(opening))
                 if !isempty(openings)
                     set_attribute!(child, :opening, last(openings))
                 end
-                if colon_column >= 0
-                    set_attribute!(child, :colon, colon_column)
+                if !isempty(colon_nodes)
+                    set_attribute!(child, :colon, last(colon_nodes))
                 end
-                if ternary_column >= 0
-                    set_attribute!(child, :ternary, ternary_column)
+                if !isempty(ternary_nodes)
+                    set_attribute!(child, :ternary, last(ternary_nodes))
+                end
+                if hanging_indents > 0
+                    set_attribute!(child, :hanging_indents, hanging_indents)
                 end
             elseif iskind(child, K"(", K"[", K"{", K"let", K"=", K"import", K"using",
                           K"export", K"public", K"return")
                 # println("Found opening")
                 openings = vcat(openings, child)
             elseif iskind(child, K":")
-                colon_column = get_column(child) + 1
+                colon_nodes = vcat(colon_nodes, child)
             elseif iskind(child, K"?")
-                ternary_column = get_column(child) + 1
+                ternary_nodes = vcat(ternary_nodes, child)
             end
         else
             if iskind(child, K"do")
@@ -73,8 +81,10 @@ function analyze_tree!(tree::Node)
                 openings = vcat(openings, move_left(node.parent))
             end
         end
-        push!(stack, (node, i + 1, openings, colon_column, ternary_column))
-        push!(stack, (child, 1, openings, colon_column, ternary_column))
+        push!(stack, (node, i + 1, openings,
+                      colon_nodes, ternary_nodes, hanging_indents))
+        push!(stack, (child, 1, openings,
+                      colon_nodes, ternary_nodes, hanging_indents))
     end
     return
 end

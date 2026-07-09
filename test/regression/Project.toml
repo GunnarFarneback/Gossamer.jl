@@ -1,5 +1,6 @@
 [deps]
 Gossamer = "c70913f9-ccc6-419f-8474-1c837f9a30c0"
+JuliaSyntax = "70703baa-626e-46a2-a12c-08ffd08c73b4"
 Profile = "9abbd945-dff8-562f-b5e8-e1ebf5ef1b79"
 ReferenceRevision = "1053fb32-4acc-43b8-9452-68b47d229da6"
 
