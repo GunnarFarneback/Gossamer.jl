@@ -9,6 +9,7 @@ end
 # JuliaSyntax fails in its recursion for deeply nested code, so for
 # now we don't get to handle such cases here.
 function format_node!(node::Node, parent::Node = node)
+    analyze_tree!(node)
     stack = [(node, 1)]
     while !isempty(stack)
         node, i = pop!(stack)
@@ -22,6 +23,58 @@ function format_node!(node::Node, parent::Node = node)
         i += indent(child)
         push!(stack, (node, i + 1))
         push!(stack, (child, 1))
+    end
+    return
+end
+
+function analyze_tree!(tree::Node)
+    stack = [(tree, 1, Node[], -1, -1)]
+    while !isempty(stack)
+        # println("stack:")
+        # for (a,b,c) in stack
+        #     println("  ", b, " (", a.row, ", ", a.column, ", ", kind(a), ")    (", c.row, ", ", c.column, ", ", kind(c), ")")
+        # end
+        # println("------")
+        node, i, openings, colon_column, ternary_column = pop!(stack)
+        i > length(node.children) && continue
+        child = node.children[i]
+        # println("(", node.row, ", ", node.column, ", ", kind(node), ")    (", opening.row, ", ", opening.column, ", ", kind(opening), ")")
+        if is_leaf(child)
+            if iskind(child, K"NewlineWs")
+                #println("Set attribute to ", kind(opening))
+                if !isempty(openings)
+                    set_attribute!(child, :opening, last(openings))
+                end
+                if colon_column >= 0
+                    set_attribute!(child, :colon, colon_column)
+                end
+                if ternary_column >= 0
+                    set_attribute!(child, :ternary, ternary_column)
+                end
+            elseif iskind(child, K"(", K"[", K"{", K"let", K"=", K"import", K"using",
+                          K"export", K"public", K"return")
+                # println("Found opening")
+                openings = vcat(openings, child)
+            elseif iskind(child, K":")
+                colon_column = get_column(child) + 1
+            elseif iskind(child, K"?")
+                ternary_column = get_column(child) + 1
+            end
+        else
+            if iskind(child, K"do")
+                # The preceding function call opening must be discarded
+                # when descensing into a `do`.
+                openings = openings[1:(end - 1)]
+            elseif i == 1 && iskind(node, K"iteration") && iskind(move_left(node), K"for")
+                # Comprehension.
+                openings = vcat(openings, move_left(node))
+            elseif i == 1 && iskind(node, K"iteration") && iskind(node.parent, K"filter") && iskind(move_left(node.parent), K"for")
+                # Filtered comprehension.
+                openings = vcat(openings, move_left(node.parent))
+            end
+        end
+        push!(stack, (node, i + 1, openings, colon_column, ternary_column))
+        push!(stack, (child, 1, openings, colon_column, ternary_column))
     end
     return
 end

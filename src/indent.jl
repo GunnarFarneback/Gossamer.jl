@@ -176,6 +176,29 @@ function indent(node)
     end
     debug && @show num_hanging_block_indents
 
+    a = get_attribute(node, :opening, nothing)
+    if false && a != opening_node
+        @show node.row
+        if !isnothing(a)
+            @show (a.row, a.column, kind(a))
+        end
+        if !isnothing(opening_node)
+            @show (opening_node.row, opening_node.column, kind(opening_node))
+        end
+    end
+    opening_node = a
+    opening_is_import_like = false
+    opening_column = -1
+    if !isnothing(opening_node)
+        opening_is_import_like = iskind(opening_node, K"import", K"using",
+                                        K"export", K"public", K"return")
+        opening_column = (get_column(opening_node) + length(opening_node.text)
+                          + iskind(opening_node, K"let", K"import", K"using",
+                                   K"export", K"public", K"return", K"for"))
+    end
+    colon_column = get_attribute(node, :colon, -1)
+    ternary_column = get_attribute(node, :ternary, -1)
+
     in_incomplete_expression = false
     if !isnothing(previous_newline_node) && has_attribute(previous_newline_node, :in_incomplete_expression)
         in_incomplete_expression = true
