@@ -144,6 +144,13 @@ z = let x = 1,
 
         x
     end
+## and with extra first line comment:
+z = let x = 1,
+        y = 2
+
+# comment
+        x
+    end
 ##
 let
 x = 1
