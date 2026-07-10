@@ -28,7 +28,7 @@ function format_node!(node::Node, parent::Node = node)
 end
 
 function analyze_tree!(tree::Node)
-    stack = [(tree, 1, Node[], Node[], Node[], 0)]
+    stack = [(tree, 1, Node[], Node[], Node[], Int[])]
     while !isempty(stack)
         # println("stack:")
         # for (a,b,c) in stack
@@ -41,7 +41,10 @@ function analyze_tree!(tree::Node)
         child = node.children[i]
         # println("(", node.row, ", ", node.column, ", ", kind(node), ")    (", opening.row, ", ", opening.column, ", ", kind(opening), ")")
         if i == 1 && iskind(node, K"block") && !iskind(node.parent, K"let")
-            hanging_indents += 1
+            hanging_indents = copy(hanging_indents)
+            if !isempty(hanging_indents)
+                hanging_indents[end] += 1
+            end
         end
         if is_leaf(child)
             if iskind(child, K"NewlineWs")
@@ -56,13 +59,14 @@ function analyze_tree!(tree::Node)
                 if !isempty(ternary_nodes)
                     set_attribute!(child, :ternary, last(ternary_nodes))
                 end
-                if hanging_indents > 0
-                    set_attribute!(child, :hanging_indents, hanging_indents)
+                if !isempty(hanging_indents)
+                    set_attribute!(child, :hanging_indents, last(hanging_indents))
                 end
             elseif iskind(child, K"(", K"[", K"{", K"let", K"=", K"import", K"using",
                           K"export", K"public", K"return")
                 # println("Found opening")
                 openings = vcat(openings, child)
+                hanging_indents = vcat(hanging_indents, 0)
             elseif iskind(child, K":")
                 colon_nodes = vcat(colon_nodes, child)
             elseif iskind(child, K"?")
@@ -76,9 +80,11 @@ function analyze_tree!(tree::Node)
             elseif i == 1 && iskind(node, K"iteration") && iskind(move_left(node), K"for")
                 # Comprehension.
                 openings = vcat(openings, move_left(node))
+                hanging_indents = vcat(hanging_indents, 0)
             elseif i == 1 && iskind(node, K"iteration") && iskind(node.parent, K"filter") && iskind(move_left(node.parent), K"for")
                 # Filtered comprehension.
                 openings = vcat(openings, move_left(node.parent))
+                hanging_indents = vcat(hanging_indents, 0)
             end
         end
         push!(stack, (node, i + 1, openings,

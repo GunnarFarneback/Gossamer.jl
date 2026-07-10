@@ -210,6 +210,7 @@ function indent(node)
     #@show num_hanging_block_indents - num_hanging_block_indents′, get_attribute(node, :hanging_indents, 0)
 
     #@assert num_hanging_block_indents - num_hanging_block_indents′ == get_attribute(node, :hanging_indents, 0)
+    num_hanging_block_indents = num_hanging_block_indents′ + get_attribute(node, :hanging_indents, 0)
 
     in_incomplete_expression = false
     if !isnothing(previous_newline_node) && has_attribute(previous_newline_node, :in_incomplete_expression)
