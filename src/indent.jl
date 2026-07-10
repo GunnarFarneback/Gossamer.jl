@@ -123,71 +123,7 @@ function indent(node)
                            1 : reference_newline_node.row + 1
     debug && @show (base_indent, num_block_indents) reference_row_number
 
-    # Search left without descending into subexpressions to identify
-    # an opening node for a hanging indent. Count enclosing blocks up
-    # to the opening node.
-    opening_node = nothing
-    opening_column = -1
-    colon_column = -1
-    ternary_column = -1
-    opening_is_import_like = false
-    node′ = node
-    num_hanging_block_indents′ = num_hanging_block_indents
-    while !is_root(node′)
-        if iskind(node′.parent, K"block") && is_first_sibling(node′)
-            if !iskind(node′.parent.parent, K"let")
-                num_hanging_block_indents += 1
-            end
-        end
-        node′ = move_left_no_descent(node′)
-        if !is_leaf(node′) && iskind(node′, K"do")
-            # Ascend, to avoid finding the function call parentheses
-            # in the `do` function call, which would confuse us.
-            node′ = node′.parent
-        end
-        if is_leaf(node′) && (iskind(node′, K"(", K"[", K"{", K"let")
-                              || iskind(node′, K"=", K"import", K"using",
-                                        K"export", K"public", K"return"))
-            opening_node = node′
-            opening_column = (get_column(opening_node) + length(node′.text)
-                              + iskind(node′, K"let", K"import", K"using",
-                                       K"export", K"public", K"return"))
-            debug && @show get_column(opening_node) length(node′.text)
-            if iskind(node′, K"import", K"using", K"export", K"public",
-                      K"return")
-                opening_is_import_like = true
-            end
-            break
-        elseif (iskind(node′.parent, K"iteration") &&
-                iskind(move_left(node′.parent), K"for"))
-            opening_node = move_left(node′.parent)
-            opening_column = get_column(node′.parent) + 1
-            break
-        elseif (iskind(node′.parent, K"iteration") &&
-                iskind(node′.parent.parent, K"filter") &&
-                iskind(move_left(node′.parent.parent), K"for"))
-            opening_node = move_left(node′.parent.parent)
-            opening_column = get_column(node′.parent.parent) + 1
-            break
-        elseif is_leaf(node′) && iskind(node′, K":")
-            colon_column = get_column(node′) + 1
-        elseif is_leaf(node′) && iskind(node′, K"?")
-            ternary_column = get_column(node′) + 1
-        end
-    end
-    debug && @show num_hanging_block_indents
-
-    a = get_attribute(node, :opening, nothing)
-    if false && a != opening_node
-        @show node.row
-        if !isnothing(a)
-            @show (a.row, a.column, kind(a))
-        end
-        if !isnothing(opening_node)
-            @show (opening_node.row, opening_node.column, kind(opening_node))
-        end
-    end
-    opening_node = a
+    opening_node = get_attribute(node, :opening, nothing)
     opening_is_import_like = false
     opening_column = -1
     if !isnothing(opening_node)
@@ -206,11 +142,8 @@ function indent(node)
         ternary_column = get_column(get_attribute(node, :ternary)) + 1
     end
 
-    #@show node
-    #@show num_hanging_block_indents - num_hanging_block_indents′, get_attribute(node, :hanging_indents, 0)
-
-    #@assert num_hanging_block_indents - num_hanging_block_indents′ == get_attribute(node, :hanging_indents, 0)
-    num_hanging_block_indents = num_hanging_block_indents′ + get_attribute(node, :hanging_indents, 0)
+    num_hanging_block_indents += get_attribute(node, :hanging_indents, 0)
+    debug && @show num_hanging_block_indents
 
     in_incomplete_expression = false
     if !isnothing(previous_newline_node) && has_attribute(previous_newline_node, :in_incomplete_expression)
