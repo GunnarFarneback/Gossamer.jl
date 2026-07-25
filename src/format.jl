@@ -9,6 +9,7 @@ end
 # JuliaSyntax fails in its recursion for deeply nested code, so for
 # now we don't get to handle such cases here.
 function format_node!(node::Node, parent::Node = node)
+    analyze_tree!(node)
     stack = [(node, 1)]
     while !isempty(stack)
         node, i = pop!(stack)
@@ -22,6 +23,74 @@ function format_node!(node::Node, parent::Node = node)
         i += indent(child)
         push!(stack, (node, i + 1))
         push!(stack, (child, 1))
+    end
+    return
+end
+
+function analyze_tree!(tree::Node)
+    stack = [(tree, 1, Node[], Node[], Node[], Int[])]
+    while !isempty(stack)
+        # println("stack:")
+        # for (a,b,c) in stack
+        #     println("  ", b, " (", a.row, ", ", a.column, ", ", kind(a), ")    (", c.row, ", ", c.column, ", ", kind(c), ")")
+        # end
+        # println("------")
+        node, i, openings, colon_nodes, ternary_nodes, hanging_indents =
+            pop!(stack)
+        i > length(node.children) && continue
+        child = node.children[i]
+        # println("(", node.row, ", ", node.column, ", ", kind(node), ")    (", opening.row, ", ", opening.column, ", ", kind(opening), ")")
+        if i == 1 && iskind(node, K"block") && !iskind(node.parent, K"let")
+            hanging_indents = copy(hanging_indents)
+            if !isempty(hanging_indents)
+                hanging_indents[end] += 1
+            end
+        end
+        if is_leaf(child)
+            if iskind(child, K"NewlineWs")
+                #@show child hanging_indents
+                #println("Set attribute to ", kind(opening))
+                if !isempty(openings)
+                    set_attribute!(child, :opening, last(openings))
+                end
+                if !isempty(colon_nodes)
+                    set_attribute!(child, :colon, last(colon_nodes))
+                end
+                if !isempty(ternary_nodes)
+                    set_attribute!(child, :ternary, last(ternary_nodes))
+                end
+                if !isempty(hanging_indents)
+                    set_attribute!(child, :hanging_indents, last(hanging_indents))
+                end
+            elseif iskind(child, K"(", K"[", K"{", K"let", K"=", K"import", K"using",
+                          K"export", K"public", K"return")
+                # println("Found opening")
+                openings = vcat(openings, child)
+                hanging_indents = vcat(hanging_indents, 0)
+            elseif iskind(child, K":")
+                colon_nodes = vcat(colon_nodes, child)
+            elseif iskind(child, K"?")
+                ternary_nodes = vcat(ternary_nodes, child)
+            end
+        else
+            if iskind(child, K"do")
+                # The preceding function call opening must be discarded
+                # when descensing into a `do`.
+                openings = openings[1:(end - 1)]
+            elseif i == 1 && iskind(node, K"iteration") && iskind(move_left(node), K"for")
+                # Comprehension.
+                openings = vcat(openings, move_left(node))
+                hanging_indents = vcat(hanging_indents, 0)
+            elseif i == 1 && iskind(node, K"iteration") && iskind(node.parent, K"filter") && iskind(move_left(node.parent), K"for")
+                # Filtered comprehension.
+                openings = vcat(openings, move_left(node.parent))
+                hanging_indents = vcat(hanging_indents, 0)
+            end
+        end
+        push!(stack, (node, i + 1, openings,
+                      colon_nodes, ternary_nodes, hanging_indents))
+        push!(stack, (child, 1, openings,
+                      colon_nodes, ternary_nodes, hanging_indents))
     end
     return
 end
