@@ -144,6 +144,13 @@ z = let x = 1,
 
         x
     end
+## and with extra first line comment:
+z = let x = 1,
+        y = 2
+
+# comment
+        x
+    end
 ##
 let
 x = 1
@@ -942,4 +949,14 @@ function f()
     else
         z
     end
+end
+##
+function parse(::Type{Float64}, s::AbstractString, r::RoundingMode)
+    a = setprecision(BigFloat, 53) do
+            setrounding(BigFloat, r) do
+                parse(BigFloat, s)
+            end
+        end
+
+    return Float64(a, r)
 end
