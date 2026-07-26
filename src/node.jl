@@ -5,6 +5,8 @@ mutable struct Node
     children::Vector{Node}
     # Cached value of isempty(children), for faster lookup.
     is_leaf::Bool
+    # Depth within tree. Root node is at depth 0.
+    depth::Int
     # Sibling index. Unless `node` is the root node, it must always
     # hold that `node === node.parent[node.index]`.
     index::Int
@@ -31,40 +33,40 @@ mutable struct Node
     # Root node points to itself.
     parent::Node
 
-    # Nodes are always created with `parent` pointing to itself
     function Node(children::Vector{Node}, index::Int, row::Int, column::Int,
                   text::Union{String, SubString{String}}, head::SyntaxHead,
                   parent::Union{Nothing, Node})
         if isnothing(parent)
-            node = new(children, true, index, row, column, true, text, head,
+            node = new(children, true, 0, index, row, column, true, text, head,
                        Dict{Symbol, Any}())
             node.parent = node
         else
-            node = new(children, true, index, row, column, true, text, head,
-                       Dict{Symbol, Any}(), parent)
+            node = new(children, true, parent.depth + 1, index, row, column,
+                       true, text, head, Dict{Symbol, Any}(), parent)
         end
         return node
     end
 end
 
 function Base.show(io::IO, node::Node)
-    print_node(io, node, 0)
+    print_node(io, node)
 end
 
-function print_node(io::IO, node::Node, indent)
+# TODO: Traverse nodes instead of recursing.
+function print_node(io::IO, node::Node)
     print(io, lpad(node.row, 5), " ")
     print(io, lpad(get_column(node), 5), " ")
     if isempty(node.children)
-        print(io, rpad(string(" "^indent, kind(node)), 30), " ")
+        print(io, rpad(string(" "^node.depth, kind(node)), 30), " ")
         if kind(node) in [K"Whitespace", K"NewlineWs"]
             print(io, "\"", escape_string(node.text), "\"")
         else
             print(io, node.text)
         end
     else
-        println(io, rpad(string(" "^indent, "[", kind(node), "]"), 30), " ")
+        println(io, rpad(string(" "^node.depth, "[", kind(node), "]"), 30), " ")
         for (i, child) in enumerate(node.children)
-            print_node(io, child, indent + 1)
+            print_node(io, child)
             i < length(node.children) && println(io)
         end
     end
