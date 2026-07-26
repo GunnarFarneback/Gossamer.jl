@@ -4,12 +4,17 @@ function format_string(s::AbstractString)
     return write_node(node)
 end
 
-# This is written with an explicit stack instead of recursion to be
-# able to handle pathological code. However, it turns out that
-# JuliaSyntax fails in its recursion for deeply nested code, so for
-# now we don't get to handle such cases here.
-function format_node!(node::Node, parent::Node = node)
-    analyze_tree!(node)
+function format_node!(node::Node)
+    format_spaces!(node)
+    format_indent!(node)
+end
+
+# This and the next function are written with an explicit stack
+# instead of recursion to be able to handle pathological code.
+# However, it turns out that JuliaSyntax fails in its recursion for
+# deeply nested code, so for now we don't get to handle such cases
+# here.
+function format_spaces!(node::Node)
     stack = [(node, 1)]
     while !isempty(stack)
         node, i = pop!(stack)
@@ -20,6 +25,21 @@ function format_node!(node::Node, parent::Node = node)
         space_after_comma(child)
         i = space_around_binary_operator(child)
         space_after_comment(child)
+        push!(stack, (node, i + 1))
+        push!(stack, (child, 1))
+    end
+    return
+end
+
+function format_indent!(node::Node)
+    analyze_tree!(node)
+    stack = [(node, 1)]
+    while !isempty(stack)
+        node, i = pop!(stack)
+        # TODO: Relax this to not include colon expressions.
+        inhibit_node_recursion(node) && continue
+        i > length(node.children) && continue
+        child = node.children[i]
         i += indent(child)
         push!(stack, (node, i + 1))
         push!(stack, (child, 1))

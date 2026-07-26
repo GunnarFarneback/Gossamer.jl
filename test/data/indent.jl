@@ -960,3 +960,29 @@ function parse(::Type{Float64}, s::AbstractString, r::RoundingMode)
 
     return Float64(a, r)
 end
+##
+if true
+x = [
+    1:2,
+    3:4
+]
+end
+#
+if true
+    x = [
+        1:2,
+        3:4
+    ]
+end
+##
+for x in (
+        1:2,
+        3
+    )
+    x
+end
+##
+"""
+Read the tutorial at $(abspath(dirname(@__DIR__), "test",
+"tutorial.jl")) or
+"""
