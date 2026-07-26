@@ -180,6 +180,16 @@ function move_right(node)
     return node.parent.children[node.index + 1]
 end
 
+# Move to the following node but skip children. Return the root node
+# if there is no following node.
+function move_right_no_descent(node)
+    while node.index == length(node.parent.children)
+        node = node.parent
+        is_root(node) && return node
+    end
+    return node.parent.children[node.index + 1]
+end
+
 # Move to the preceding sibling, back up to parent if out of siblings.
 # Return the root node if there is nowhere left to move.
 function move_left_no_descent(node)

@@ -5,44 +5,40 @@ function format_string(s::AbstractString)
 end
 
 function format_node!(node::Node)
+    # Catch corner case of empty file.
+    isempty(node.children) && return
+
     format_spaces!(node)
     format_indent!(node)
 end
 
-# This and the next function are written with an explicit stack
-# instead of recursion to be able to handle pathological code.
-# However, it turns out that JuliaSyntax fails in its recursion for
-# deeply nested code, so for now we don't get to handle such cases
-# here.
 function format_spaces!(node::Node)
-    stack = [(node, 1)]
-    while !isempty(stack)
-        node, i = pop!(stack)
-        inhibit_node_recursion(node) && continue
+    node = move_right(node)
+    while !is_root(node)
+        if inhibit_node_recursion(node)
+            node = move_right_no_descent(node)
+            continue
+        end
         propagate_inline_space_inhibition(node)
-        i > length(node.children) && continue
-        child = node.children[i]
-        space_after_comma(child)
-        i = space_around_binary_operator(child)
-        space_after_comment(child)
-        push!(stack, (node, i + 1))
-        push!(stack, (child, 1))
+        space_after_comma(node)
+        space_around_binary_operator(node)
+        space_after_comment(node)
+        node = move_right(node)
     end
     return
 end
 
 function format_indent!(node::Node)
     analyze_tree!(node)
-    stack = [(node, 1)]
-    while !isempty(stack)
-        node, i = pop!(stack)
+    node = move_right(node)
+    while !is_root(node)
         # TODO: Relax this to not include colon expressions.
-        inhibit_node_recursion(node) && continue
-        i > length(node.children) && continue
-        child = node.children[i]
-        i += indent(child)
-        push!(stack, (node, i + 1))
-        push!(stack, (child, 1))
+        if inhibit_node_recursion(node)
+            node = move_right_no_descent(node)
+            continue
+        end
+        indent(node)
+        node = move_right(node)
     end
     return
 end
@@ -155,17 +151,14 @@ function space_after_comma(node)
     return
 end
 
-# Returns new index of the node.
-#
-# TODO: Rewrite to return index offset instead of new index.
 function space_around_binary_operator(node)
     parent = node.parent
     index = node.index
-    index == 1 && return index
-    has_attribute(node, :inhibit_inline_space_formatting) && return index
+    index == 1 && return
+    has_attribute(node, :inhibit_inline_space_formatting) && return
     # Only consider operator nodes.
-    node_is_operator(node) || return index
-    iskind(node, K".") && return index
+    node_is_operator(node) || return
+    iskind(node, K".") && return
 
     space_before = false
     space_node_before = nothing
@@ -187,7 +180,7 @@ function space_around_binary_operator(node)
         end
     end
 
-    op_before && return index
+    op_before && return
 
     space_after = false
     space_node_after = nothing
@@ -221,25 +214,25 @@ function space_around_binary_operator(node)
         end
     end
 
-    (nonspace_before && nonspace_after) || return index
-    (comma_after || closing_after) && return index
+    (nonspace_before && nonspace_after) || return
+    (comma_after || closing_after) && return
     # Process .op when we get to op.
-    iskind(node, K".") && op_after && return index
+    iskind(node, K".") && op_after && return
 
-    node.text in ("^", "::", "//", "<:") && !space_before && !space_after && return index
+    node.text in ("^", "::", "//", "<:") && !space_before && !space_after && return
 
     if node.text == "::" && space_before && !space_after
         # Accept this inside struct definitions. It occurs in the
         # wild.
         if iskind(node.parent, K"::") && iskind(node.parent.parent, K"block") && iskind(node.parent.parent.parent, K"struct")
-            return index
+            return
         end
     end
 
     # Accept division without space if both arguments are literals.
     if node.text == "/" && !space_before && !space_after
         if is_literal(move_left(node)) && is_literal(move_right(node))
-            return index
+            return
         end
     end
 
@@ -249,7 +242,7 @@ function space_around_binary_operator(node)
         && !space_before && !space_after)
 
         add_attribute!(move_right(node), :inhibit_inline_space_formatting)
-        return index
+        return
     end
 
     add_space_before = false
@@ -299,15 +292,13 @@ function space_around_binary_operator(node)
     remove_space_after && remove_space!(space_node_after)
     if add_space_before
         insert_space!(parent, index - dot_before)
-        index += 1
     end
 
     if remove_space_before
         remove_space!(space_node_before)
-        index -= 1
     end
 
-    return index
+    return
 end
 
 function space_after_comment(node)

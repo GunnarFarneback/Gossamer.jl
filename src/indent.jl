@@ -8,7 +8,7 @@ function indent(node)
         if node.text != reference_text
             invalidate_column_for_rest_of_row(node)
         end
-        return 0
+        return
     end
 
     # Also trim space from the very end of the file.
@@ -17,7 +17,7 @@ function indent(node)
     end
 
     # Otherwise, only consider newline nodes.
-    iskind(node, K"NewlineWs") || return 0
+    iskind(node, K"NewlineWs") || return
 
     parent = node.parent
     index = node.index
@@ -330,13 +330,13 @@ function indent(node)
 
                     debug && @show "inserting!"
                     insert_leaf_node!(node.parent, node.index, K"NewlineWs", "\n")
-                    return 1
+                    return
                 end
             end
         end
     end
 
-    return 0
+    return
 end
 
 # Is node first on its line, whitespace excluded?
