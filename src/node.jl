@@ -93,9 +93,8 @@ get_attribute(node::Node, attr::Symbol, default) =
 function green_to_node(green::GreenNode, raw::AbstractString, pos::Int = 1,
                        row::Int = 1, column::Int = 1, sibling_index::Int = 1,
                        parent::Union{Nothing, Node} = nothing)
-    text = raw[pos:prevind(raw, pos + green.span)]
     children = Node[]
-    node = Node(children, sibling_index, row, column, text, green.head, parent)
+    node = Node(children, sibling_index, row, column, "", green.head, parent)
     if !isnothing(green.children)
         for (i, green_child) in enumerate(green.children)
             child, row, column = green_to_node(green_child, raw, pos,
@@ -105,6 +104,8 @@ function green_to_node(green::GreenNode, raw::AbstractString, pos::Int = 1,
         end
         node.is_leaf = isempty(children)
     else
+        text = raw[pos:prevind(raw, pos + green.span)]
+        node.text = text
         if contains(text, "\n")
             row += count(==('\n'), text)
             column = 1 + length(last(rsplit(text, "\n", limit = 2)))
@@ -265,6 +266,81 @@ function remove_child!(parent, position)
     end
     invalidate_column_for_rest_of_row(parent)
     return
+end
+
+# Move a first child node up to parent.
+function move_first_sibling_out_of_node!(node)
+    @assert !is_root(node)
+    @assert is_first_sibling(node)
+    parent = node.parent
+    popfirst!(parent.children)
+    for i in eachindex(parent.children)
+        parent.children[i].index = i
+    end
+    parent.is_leaf = isempty(parent.children)
+    node.parent = parent.parent
+    node.depth -= 1
+    index = parent.index
+    insert!(parent.parent.children, index, node)
+    for i in index:length(parent.parent.children)
+        parent.parent.children[i].index = i
+    end
+end
+
+# Move a last child node up to parent.
+function move_last_sibling_out_of_node!(node)
+    @assert !is_root(node)
+    @assert is_last_sibling(node)
+    parent = node.parent
+    pop!(parent.children)
+    parent.is_leaf = isempty(parent.children)
+    node.parent = parent.parent
+    node.depth -= 1
+    index = parent.index
+    insert!(parent.parent.children, index + 1, node)
+    for i in index:length(parent.parent.children)
+        parent.parent.children[i].index = i
+    end
+end
+
+# Move a node to be first child of the immediately following
+# sibling node.
+function move_node_into_following_sibling!(node)
+    @assert !is_root(node)
+    @assert !is_last_sibling(node)
+    parent = node.parent
+    index = node.index
+    next = node.parent.children[index + 1]
+    deleteat!(parent.children, index)
+    for i in index:length(parent.children)
+        parent.children[i].index = i
+    end
+    node.parent = next
+    node.depth += 1
+    pushfirst!(next.children, node)
+    for i in eachindex(next.children)
+        next.children[i].index = i
+    end
+    next.is_leaf = false
+end
+
+# Move a node to be last child of the immediately previous
+# sibling node.
+function move_node_into_previous_sibling!(node)
+    @assert !is_root(node)
+    @assert !is_first_sibling(node)
+    parent = node.parent
+    index = node.index
+    prev = node.parent.children[index - 1]
+    deleteat!(parent.children, index)
+    for i in index:length(parent.children)
+        parent.children[i].index = i
+    end
+    node.parent = prev
+    node.depth += 1
+    push!(prev.children, node)
+    node.index = length(prev.children)
+    prev.is_leaf = false
 end
 
 function get_column(node)

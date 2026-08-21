@@ -9,7 +9,14 @@ function format_node!(node::Node)
     isempty(node.children) && return
 
     format_spaces!(node)
-    format_indent!(node)
+    max_depth = 0
+    node′ = node
+    while true
+        node′ = move_right(node′)
+        is_root(node′)  && break
+        max_depth = max(max_depth, node′.depth)
+    end
+    format_indent!(node, max_depth)
 end
 
 function format_spaces!(node::Node)
@@ -28,7 +35,7 @@ function format_spaces!(node::Node)
     return
 end
 
-function format_indent!(node::Node)
+function format_indent_old!(node::Node)
     analyze_tree!(node)
     node = move_right(node)
     while !is_root(node)
@@ -91,7 +98,7 @@ function analyze_tree!(tree::Node)
         else
             if iskind(child, K"do")
                 # The preceding function call opening must be discarded
-                # when descensing into a `do`.
+                # when descending into a `do`.
                 openings = openings[1:(end - 1)]
             elseif i == 1 && iskind(node, K"iteration") && iskind(move_left(node), K"for")
                 # Comprehension.
