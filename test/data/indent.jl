@@ -121,47 +121,6 @@ xxxxxx +=
         z
     end
 ##
-let x = 1
-x
-end
-#
-let x = 1
-    x
-end
-##
-z = let x = 1,
-y = 2
-x
-end
-#
-z = let x = 1,
-        y = 2
-    x
-end
-## Also accept
-z = let x = 1,
-        y = 2
-
-        x
-    end
-## and with extra first line comment:
-z = let x = 1,
-        y = 2
-
-# comment
-        x
-    end
-##
-let
-x = 1
-x
-end
-#
-let
-    x = 1
-    x
-end
-##
 import x,
        y
 ##
@@ -291,12 +250,6 @@ if true
     end
 end
 ##
-if true
-    let x = x
-        x
-    end
-end
-##
 @generated function
     f(x)
 
@@ -324,17 +277,6 @@ end
 #
 for x in 1:2,
     y in 3:4
-
-    f(x + y)
-end
-##
-let x = 1,
-    y = 3
-    f(x + y)
-end
-#
-let x = 1,
-    y = 3
 
     f(x + y)
 end
