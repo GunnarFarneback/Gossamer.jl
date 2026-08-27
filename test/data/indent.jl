@@ -928,3 +928,9 @@ end
 Read the tutorial at $(abspath(dirname(@__DIR__), "test",
 "tutorial.jl")) or
 """
+##
+a, b,
+c = f()
+#
+a, b,
+    c = f()

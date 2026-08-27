@@ -72,6 +72,15 @@ function print_node(io::IO, node::Node)
     end
 end
 
+# Short string description of a node. Intended for debug prints.
+function _string(node::Node)
+    k = string(kind(node))
+    if is_leaf(node)
+        k = "[$k]"
+    end
+    return string(node.row, " ", get_column(node), " ", k)
+end
+
 kind(node::Node) = JuliaSyntax.kind(node.head)
 iskind(node::Node, kinds::JuliaSyntax.Kind...) = any(==(kind(node)), kinds)
 is_root(node) = node.parent === node
