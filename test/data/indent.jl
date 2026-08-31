@@ -934,3 +934,35 @@ c = f()
 #
 a, b,
     c = f()
+##
+ccccccccxxxxx = f(x, ggggg(
+ccccccccccccccccccccccccccccccccccccccccccccccccccccx,
+                           ccccccccccccccccccccccccccccccccccccccccccccccccccccx,
+ccccccccccccccccccccccccccccccccccccccccccccccccccccy
+),
+x
+)
+#
+ccccccccxxxxx = f(x, ggggg(
+        ccccccccccccccccccccccccccccccccccccccccccccccccccccx,
+        ccccccccccccccccccccccccccccccccccccccccccccccccccccx,
+        ccccccccccccccccccccccccccccccccccccccccccccccccccccy
+    ),
+    x
+)
+##
+ccccccccxxxxx = f(x, ggggg(x,
+ccccccccccccccccccccccccccccccccccccccccccccccccccccx,
+                           ccccccccccccccccccccccccccccccccccccccccccccccccccccx,
+ccccccccccccccccccccccccccccccccccccccccccccccccccccy
+),
+x
+)
+#
+ccccccccxxxxx = f(x, ggggg(x,
+                           ccccccccccccccccccccccccccccccccccccccccccccccccccccx,
+                           ccccccccccccccccccccccccccccccccccccccccccccccccccccx,
+                           ccccccccccccccccccccccccccccccccccccccccccccccccccccy
+                           ),
+                  x
+                  )

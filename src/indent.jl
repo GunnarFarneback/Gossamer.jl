@@ -121,7 +121,7 @@ function format_indent!(root::Node, max_depth::Int)
         if !is_leaf(node)
         else
             if iskind(node, K"(", K"[", K"{", K"=", K"import", K"using",
-                          K"export", K"public", K"return")
+                          K"export", K"public", K"return", K"for")
                 # println("Found opening")
                 @s(opening_node) = node
                 @s(num_hanging_block_indents) = 0
@@ -129,7 +129,7 @@ function format_indent!(root::Node, max_depth::Int)
                     is_opening_substantial(node)
                 @s(num_block_indents) += indent_block
             elseif iskind(node, K"NewlineWs")
-                indent_newline_node!(node, states, previous_newline_node)
+                indent_newline_node!(root, node, states, previous_newline_node)
                 previous_newline_node = node
             end
         end
@@ -158,7 +158,7 @@ function format_indent!(root::Node, max_depth::Int)
 end
 
 # Perform the actual reindentation.
-function indent_newline_node!(node, states, previous_newline_node)
+function indent_newline_node!(root, node, states, previous_newline_node)
     debug && println("--------------------------------------------------------")
 
     opening_node = @s(opening_node)
@@ -198,13 +198,19 @@ function indent_newline_node!(node, states, previous_newline_node)
 
     # Indentation without consideration of hanging indent.
     left_indent = base_indent + 4 * num_block_indents
+    secondary_left_indent = -1
+
+    if is_root(opening_node) && iskind(move_right(node), K")", K"]", K"}")
+        secondary_left_indent = left_indent
+        left_indent -= 4
+    end
 
     # Remove trailing space and convert indenting tabs to spaces.
     exotic_spaces = preprocess_indentation_space!(node)
     reference_text = node.text
     old_indent = indentation_of_node(node)
 
-    if old_indent == hanging_indent || old_indent == left_indent
+    if old_indent == hanging_indent || old_indent == left_indent || old_indent == secondary_left_indent
         indent_to = old_indent
     elseif opening_is_substantial
         indent_to = hanging_indent
@@ -214,6 +220,19 @@ function indent_newline_node!(node, states, previous_newline_node)
 
     debug && @show old_indent _string(opening_node) opening_is_substantial hanging_indent left_indent indent_to
 
+    if indent_to != hanging_indent != -1
+        @show "Left indenting, updating state."
+        depth = node.depth
+        while depth >= 1 && states[depth].num_block_indents > 0
+            @show depth
+            states[depth].opening_node = root
+            states[depth].num_hanging_block_indents = 0
+            states[depth].opening_is_substantial = false
+            states[depth].dedent_closing_parenthesis = true
+            depth -= 1
+        end
+    else
+    end
     @s(base_indent) = indent_to
     @s(num_block_indents) = 0
 
@@ -273,15 +292,16 @@ end
 # also count as insubstantial.
 function is_opening_substantial(node)
     @show _string(node)
+    iskind(node, K"for") && return false, false
     node′ = move_right(node)
     if iskind(node′, K"Whitespace")
         node′ = move_right(node′)
     end
     @show _string(node′)
     iskind(node′, K"NewlineWs") && return false, true
-    iskind(node, K"=") && iskind(node′, K"begin", K"while", K"for", K"if",
+    #= iskind(node, K"=") && =# iskind(node′, K"begin", K"while", K"for", K"if",
                                  K"let", K"try", K"quote",
-                                 K"call") && return false, false
+                                 K"call", K"vect") && return false, false
     return true, true
 end
 
