@@ -128,6 +128,10 @@ function format_indent!(root::Node, max_depth::Int)
                 @s(opening_is_substantial), indent_block =
                     is_opening_substantial(node)
                 @s(num_block_indents) += indent_block
+            elseif iskind(node, K")") && iskind(@s(opening_node), K"(")
+                @show "invalidating opening ("
+                @s(opening_node) = root
+                @s(opening_is_substantial) = false
             elseif iskind(node, K"NewlineWs")
                 indent_newline_node!(root, node, states, previous_newline_node)
                 previous_newline_node = node
@@ -139,11 +143,15 @@ function format_indent!(root::Node, max_depth::Int)
         if node.depth > depth
             @assert node.depth == depth + 1
             copy_state!(states[depth + 1], states[depth])
+            @s(in_module) = false
 
             if iskind(node.parent, K"block")
                 if true
                     @s(num_block_indents) += 1
                     @s(num_hanging_block_indents) += 1
+                end
+                if iskind(node.parent.parent, K"module")
+                    @s(in_module) = true
                 end
             end
 
@@ -203,6 +211,9 @@ function indent_newline_node!(root, node, states, previous_newline_node)
     if is_root(opening_node) && iskind(move_right(node), K")", K"]", K"}")
         secondary_left_indent = left_indent
         left_indent -= 4
+    elseif in_module
+        secondary_left_indent = left_indent
+        left_indent -= 4
     end
 
     # Remove trailing space and convert indenting tabs to spaces.
@@ -218,7 +229,7 @@ function indent_newline_node!(root, node, states, previous_newline_node)
         indent_to = left_indent
     end
 
-    debug && @show old_indent _string(opening_node) opening_is_substantial hanging_indent left_indent indent_to
+    debug && @show old_indent _string(opening_node) opening_is_substantial hanging_indent left_indent secondary_left_indent indent_to in_module
 
     if indent_to != hanging_indent != -1
         @show "Left indenting, updating state."
