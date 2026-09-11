@@ -95,9 +95,84 @@ function move_newlines!(root::Node)
         elseif iskind(node, K"end") && iskind(parent, K"block") && is_last_sibling(node)
             move_last_sibling_out_of_node!(node)
             continue
+        elseif !is_leaf(node) && iskind(node, K"do") && iskind(node.parent, K"call") && iskind(move_left(node), K")") && is_last_sibling(node)
+            restructure_do!(node)
         end
         node = move_left(node)
     end
+end
+
+# JuliaSyntax representation of `do` constructions is
+# unnecessarily difficult for formatting to work with.
+# Slightly simplified it has the structure
+#
+#   [call]
+#     Identifier
+#     (
+#     ...
+#     )
+#     [do]
+#       do
+#       [tuple]
+#       [block]
+#
+# We would rather prefer it be
+#
+#   [do]
+#     [call]
+#     do
+#     [tuple]
+#     [block]
+#
+# This function implements that transformation.
+function restructure_do!(node)
+    node1 = node.parent
+    node2 = node
+    # Step 1, switch the kinds of the call and do nodes:
+    #
+    #   [do]
+    #     Identifier
+    #     (
+    #     ...
+    #     )
+    #     [call]
+    #       do
+    #       [tuple]
+    #       [block]
+    #
+    node1.head, node2.head = node2.head, node1.head
+    # Step 2, move the current [call] children up to the parent:
+    #
+    #   [do]
+    #     Identifier
+    #     (
+    #     ...
+    #     )
+    #     [call]
+    #     do
+    #     [tuple]
+    #     [block]
+    append!(node1.children, node2.children)
+    empty!(node2.children)
+    # Step 3, move the nodes preceding [call] into [call]:
+    #
+    #   [do]
+    #     [call]
+    #       Identifier
+    #       (
+    #       ...
+    #       )
+    #     do
+    #     [tuple]
+    #     [block]
+    while first(node1.children) !== node2
+        push!(node2.children, popfirst!(node1.children))
+    end
+    # Step 4, fix the tree internal consistency.
+    refresh_parent_and_index_for_children!(node1)
+    refresh_parent_and_index_for_children!(node2)
+    adjust_depth!.(node2.children, 1)
+    adjust_depth!.(@view(node1.children[2:end]), -1)
 end
 
 function format_indent!(root::Node, max_depth::Int)
@@ -128,10 +203,6 @@ function format_indent!(root::Node, max_depth::Int)
                 @s(opening_is_substantial), indent_block =
                     is_opening_substantial(node)
                 @s(num_block_indents) += indent_block
-            elseif iskind(node, K")") && iskind(@s(opening_node), K"(")
-                @show "invalidating opening ("
-                @s(opening_node) = root
-                @s(opening_is_substantial) = false
             elseif iskind(node, K"NewlineWs")
                 indent_newline_node!(root, node, states, previous_newline_node)
                 previous_newline_node = node

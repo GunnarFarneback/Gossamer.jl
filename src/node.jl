@@ -352,6 +352,24 @@ function move_node_into_previous_sibling!(node)
     prev.is_leaf = false
 end
 
+function refresh_parent_and_index_for_children!(node)
+    for i in eachindex(node.children)
+        node.children[i].parent = node
+        node.children[i].index = i
+    end
+end
+
+# Adjust the depth field of node and all its recursive children by
+# delta.
+function adjust_depth!(node, delta)
+    next_node = move_right_no_descent(node)
+    node′ = node
+    while node′ !== next_node
+        node′.depth += delta
+        node′ = move_right(node′)
+    end
+end
+
 function get_column(node)
     node.column_is_current || update_columns!(node)
     @assert node.column_is_current
