@@ -207,6 +207,8 @@ function format_indent!(root::Node, max_depth::Int)
                 @s(num_block_indents) += indent_block
             elseif iskind(node, K":")
                 @s(colon_node) = node
+            elseif iskind(node, K"?")
+                @s(ternary_node) = node
             elseif iskind(node, K"NewlineWs")
                 indent_newline_node!(root, node, states, previous_newline_node)
                 previous_newline_node = node
@@ -268,6 +270,14 @@ function indent_newline_node!(root, node, states, previous_newline_node)
         return
     end
 
+    # If whitespace only line, strip it down and leave the indentation
+    # state unchanged.
+    if iskind(move_right(node), K"NewlineWs")
+        # TODO: This is likely somewhat oversimplified.
+        node.text = "\n"
+        return
+    end
+
     opening_column = -1
     if !is_root(opening_node)
         opening_column = (get_column(opening_node) + length(opening_node.text)
@@ -287,12 +297,22 @@ function indent_newline_node!(root, node, states, previous_newline_node)
             hanging_indent = get_column(colon_node) + 1
             prefer_hanging_indent = !iskind(move_right(colon_node),
                                             K"NewlineWs")
+        elseif !is_root(ternary_node)
+            secondary_hanging_indent = hanging_indent
+            hanging_indent = get_column(ternary_node) + 1
+            prefer_hanging_indent = !iskind(move_right(ternary_node),
+                                            K"NewlineWs")
         end
     elseif !is_root(colon_node) && iskind(colon_node.parent.parent, K"import", K"using")
         hanging_indent = get_column(colon_node) + 1
         colon_is_substantial = !iskind(move_right(colon_node), K"NewlineWs")
         prefer_hanging_indent = colon_is_substantial
         num_block_indents += !colon_is_substantial
+    elseif !is_root(ternary_node)
+        hanging_indent = get_column(ternary_node) + 1
+        ternary_is_substantial = !iskind(move_right(ternary_node), K"NewlineWs")
+        prefer_hanging_indent = ternary_is_substantial
+        num_block_indents += !ternary_is_substantial
     end
 
     # Indentation without consideration of hanging indent.

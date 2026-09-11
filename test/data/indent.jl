@@ -272,18 +272,6 @@ end
         z
 end
 ##
-yyy = x ? 1 :
-          2
-##
-yyy = x ? 1 :
-      2
-##
-yyy = x ? 1 :
-    2
-##
-xx ? x :
-     x
-##
 xxxxxxxxxxxxx =
     yyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy =
     zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz =
@@ -698,69 +686,6 @@ x
 y = (;
     x
 )
-##
-function f()
-    yy =
-        x ? x :
-        #
-        x ? x :
-
-        x ? x : y
-end
-##
-function f1()
-    yy =
-        x ? x :
-        #
-        x ? x :
-         x ? x : y
-end
-#
-function f1()
-    yy =
-        x ? x :
-        #
-        x ? x :
-            x ? x : y
-end
-##
-function f2()
-    yy =
-        x ? x :
-        #
-        x ? x :
-###
-         x ? x : y
-end
-#
-function f2()
-    yy =
-        x ? x :
-        #
-        x ? x :
-###
-            x ? x : y
-end
-##
-function f3()
-    yy =
-        x ? x :
-        #
-        x ? x :
- #=
- =#
-         x ? x : y
-end
-#
-function f3()
-    yy =
-        x ? x :
-        #
-        x ? x :
- #=
- =#
-            x ? x : y
-end
 ##
 if (x
     || x)
