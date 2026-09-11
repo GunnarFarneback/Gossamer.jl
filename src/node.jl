@@ -75,7 +75,7 @@ end
 # Short string description of a node. Intended for debug prints.
 function _string(node::Node)
     k = string(kind(node))
-    if is_leaf(node)
+    if !is_leaf(node)
         k = "[$k]"
     end
     return string(node.row, " ", get_column(node), " ", k)

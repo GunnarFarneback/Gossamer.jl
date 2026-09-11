@@ -121,44 +121,6 @@ xxxxxx +=
         z
     end
 ##
-import x,
-       y
-##
-import x,
-    y
-##
-import x: y,
-          z
-##
-import x: y,
-       z
-##
-import x: y,
-    z
-##
-import x:
-    y,
-    z
-##
-using x,
-      y
-##
-using x,
-    y
-##
-using x: y,
-         z
-##
-using x: y,
-      z
-##
-using x: y,
-    z
-##
-using x:
-    y,
-    z
-##
 export x,
        y
 ##
