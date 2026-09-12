@@ -81,7 +81,7 @@ function move_newlines!(root::Node)
                 # Newline as last sibling, move it out to parent.
                 move_last_sibling_out_of_node!(node)
                 continue
-            elseif is_first_sibling(node) && iskind(parent, K"call", K"importpath", K"as")
+            elseif is_first_sibling(node) && iskind(parent, K"call", K"importpath", K"as", K"=")
                 move_first_sibling_out_of_node!(node)
                 continue
             else
@@ -96,7 +96,7 @@ function move_newlines!(root::Node)
             continue
         elseif iskind(node, K"end") && iskind(parent, K"block") && is_last_sibling(node)
             move_last_sibling_out_of_node!(node)
-            continue
+            #continue
         elseif !is_leaf(node) && iskind(node, K"do") && iskind(node.parent, K"call") && iskind(move_left(node), K")") && is_last_sibling(node)
             restructure_do!(node)
         end
@@ -199,7 +199,7 @@ function format_indent!(root::Node, max_depth::Int)
         else
             if iskind(node, K"(", K"[", K"{", K"=", K"import", K"using",
                       K"export", K"public", K"return", K"for")
-                println("Found opening ", _string(node))
+                println("Found opening ", _string(node), " at depth ", node.depth)
                 @s(opening_node) = node
                 @s(num_hanging_block_indents) = 0
                 @s(opening_is_substantial), indent_block =
@@ -225,11 +225,18 @@ function format_indent!(root::Node, max_depth::Int)
 
             if iskind(node.parent, K"block")
                 if true
+                    @show "incrementing num_hanging_block_indents at depth $(node.depth)"
                     @s(num_block_indents) += 1
                     @s(num_hanging_block_indents) += 1
                 end
                 if iskind(node.parent.parent, K"module")
                     @s(in_module) = true
+                end
+                if iskind(node.parent.parent, K"let") && iskind(move_left(node.parent), K"let")
+                    println("Found let opening ", _string(node.parent.parent), " at depth ", node.depth)
+                    @s(opening_node) = move_left(node.parent)
+                    @s(num_hanging_block_indents) = 0
+                    @s(opening_is_substantial) = true
                 end
             end
 
@@ -289,6 +296,7 @@ function indent_newline_node!(root, node, states, previous_newline_node)
     secondary_hanging_indent = -1
     prefer_hanging_indent = false
     if !is_root(opening_node)
+        @show opening_column num_hanging_block_indents
         hanging_indent = (opening_column + node_is_operator(opening_node) - 1
                           + 4 * num_hanging_block_indents)
         prefer_hanging_indent = opening_is_substantial
