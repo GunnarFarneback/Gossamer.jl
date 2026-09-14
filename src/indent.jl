@@ -348,6 +348,13 @@ function indent_newline_node!(root, node, states, previous_newline_node)
         @s(extra_indent_from_continued_expression) = true
     end
 
+    base_indent_offset = 0
+    # TODO: Replace by state variable.
+    if iskind(move_left(node), K"function", K"macro")
+        left_indent += 4
+        base_indent_offset = -4
+    end
+
     #if is_root(opening_node) && iskind(move_right(node), K")", K"]", K"}")
     if dedent_closing_parenthesis && iskind(move_right(node), K")", K"]", K"}")
         secondary_left_indent = left_indent
@@ -386,7 +393,7 @@ function indent_newline_node!(root, node, states, previous_newline_node)
         end
     else
     end
-    @s(base_indent) = indent_to
+    @s(base_indent) = indent_to + base_indent_offset
     @s(num_block_indents) = 0
     @s(opening_node) = root
     @s(opening_is_substantial) = false
