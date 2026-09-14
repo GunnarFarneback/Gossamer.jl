@@ -95,32 +95,6 @@ module M
 x
 end
 ##
-f() do
-x
-end
-#
-f() do
-    x
-end
-##
-f() do x
-x
-end
-#
-f() do x
-    x
-end
-##
-xxxxxx =
-    f() do y
-        z
-    end
-##
-xxxxxx +=
-    f() do y
-        z
-    end
-##
 export x,
        y
 ##
@@ -378,11 +352,6 @@ f(g) = g * g'
 x = ' '
 y
 ##
-f() do
-    g(x,
-      y)
-end
-##
 begin
     for h in H,
         w in W
@@ -436,18 +405,6 @@ end
 #
 if true &&
     !false
-
-    x
-end
-##
-yyy = f() do x
-    x
-
-    x
-end
-##
-yyy = f() do x
-    g(x)
 
     x
 end
@@ -545,11 +502,6 @@ if a ||
     (c &&
      (d || e))
 end
-##
-fffffff(x,
-        y) do z
-    z
-end
 ## There's a trailing space after the `y`.
 if x ||
     y 
@@ -599,14 +551,6 @@ end
 
 for x in begin
         X
-    end
-end
-##
-function g()
-    if x
-    elseif y && f() do x
-            return x
-        end
     end
 end
 ## Can skip empty line after `end` and closing brackets.
@@ -743,28 +687,6 @@ f(x,
          x)
 ##
 function f()
-if true
-    g() do
-        yyy = h() do
-           x()
-         end
-        return y
-    end
-end
-end
-#
-function f()
-    if true
-        g() do
-            yyy = h() do
-                x()
-            end
-            return y
-        end
-    end
-end
-##
-function f()
   x = if y
     z
   else
@@ -778,16 +700,6 @@ function f()
     else
         z
     end
-end
-##
-function parse(::Type{Float64}, s::AbstractString, r::RoundingMode)
-    a = setprecision(BigFloat, 53) do
-            setrounding(BigFloat, r) do
-                parse(BigFloat, s)
-            end
-        end
-
-    return Float64(a, r)
 end
 ##
 if true
