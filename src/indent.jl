@@ -376,6 +376,7 @@ function indent_newline_node!(root, node, states, previous_newline_node)
     @show @s(in_incomplete_expression) @s(extra_indent_from_continued_expression)
     if @s(in_incomplete_expression) && !@s(extra_indent_from_continued_expression)
         if num_block_indents == 0
+            secondary_left_indent = left_indent
             left_indent += 4
         end
         @s(extra_indent_from_continued_expression) = true
