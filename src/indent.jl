@@ -434,9 +434,13 @@ function indent_newline_node!(root, node, states, previous_newline_node)
     # Check whether the current indentation is the same as the
     # indentation on the last line. If it is and those indentations
     # are unrelated, separate the lines with an empty line. Don't do
-    # this for empty blocks.
+    # this for empty blocks or when the previous line is a closing
+    # character or end.
     if !is_root(previous_newline_node) && iskind(move_left(node), K"block") && !is_leaf(move_left(node)) && indent_to == indentation_of_node(previous_newline_node)
-        insert_leaf_node!(node.parent, node.index, K"NewlineWs", "\n")
+        prev = move_right(previous_newline_node)
+        if !(iskind(prev, K"end", K")", K"]", K"}"))
+            insert_leaf_node!(node.parent, node.index, K"NewlineWs", "\n")
+        end
     end
     #=
     # If this newline was preceded by a whitespace only line, now is
