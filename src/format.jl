@@ -30,6 +30,7 @@ function format_spaces!(node::Node)
         space_after_comma(node)
         space_around_binary_operator(node)
         space_after_comment(node)
+        space_before_do(node)
         node = move_right(node)
     end
     return
@@ -323,6 +324,13 @@ function space_after_comment(node)
     if node.text != reference_text
         invalidate_column_for_rest_of_row(node)
     end
+end
+
+function space_before_do(node)
+    is_leaf(node) || return
+    iskind(node, K"do") || return
+    iskind(move_left(node), K"Whitespace") && return
+    insert_space!(node.parent, node.index)
 end
 
 function insert_space!(node, index)
