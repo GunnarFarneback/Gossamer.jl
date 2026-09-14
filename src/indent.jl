@@ -16,6 +16,8 @@ mutable struct IndentState
     block_construction_found::Bool
     dedent_follows::Bool
     dedent_closing_parenthesis::Bool
+    in_incomplete_expression::Bool
+    extra_indent_from_continued_expression::Bool
 
     # TODO: Once the code is sufficiently stable, replace this with a
     # standard constructor of the actual fields.
@@ -202,8 +204,10 @@ function format_indent!(root::Node, max_depth::Int)
                 println("Found opening ", _string(node), " at depth ", node.depth)
                 @s(opening_node) = node
                 @s(num_hanging_block_indents) = 0
+                _is_opening_substantial = is_opening_substantial(node)
+                @show _is_opening_substantial
                 @s(opening_is_substantial), indent_block =
-                    is_opening_substantial(node)
+                    _is_opening_substantial
                 @s(num_block_indents) += indent_block
             elseif iskind(node, K":")
                 @s(colon_node) = node
@@ -215,6 +219,13 @@ function format_indent!(root::Node, max_depth::Int)
             end
         end
 
+        # Colons are handled separately with colon_node etc.
+        if node_is_operator(node) && !iskind(node, K":")
+            @s(in_incomplete_expression) = true
+        elseif !iskind(node, K"Whitespace", K"NewlineWs") && is_leaf(node)
+            @s(in_incomplete_expression) = false
+        end
+
         depth = node.depth
         node = move_right(node)
         if node.depth > depth
@@ -222,6 +233,10 @@ function format_indent!(root::Node, max_depth::Int)
             copy_state!(states[depth + 1], states[depth])
             @s(in_module) = false
             @s(dedent_closing_parenthesis) = false
+            if !@s(in_incomplete_expression)
+                @s(extra_indent_from_continued_expression) = false
+            end
+            @s(in_incomplete_expression) = false
 
             if iskind(node.parent, K"block")
                 if true
@@ -327,6 +342,12 @@ function indent_newline_node!(root, node, states, previous_newline_node)
     left_indent = base_indent + 4 * num_block_indents
     secondary_left_indent = -1
 
+    @show @s(in_incomplete_expression) @s(extra_indent_from_continued_expression)
+    if @s(in_incomplete_expression) && !@s(extra_indent_from_continued_expression)
+        left_indent += 4
+        @s(extra_indent_from_continued_expression) = true
+    end
+
     #if is_root(opening_node) && iskind(move_right(node), K")", K"]", K"}")
     if dedent_closing_parenthesis && iskind(move_right(node), K")", K"]", K"}")
         secondary_left_indent = left_indent
@@ -349,7 +370,7 @@ function indent_newline_node!(root, node, states, previous_newline_node)
         indent_to = left_indent
     end
 
-    debug && @show base_indent old_indent _string(opening_node) opening_is_substantial prefer_hanging_indent hanging_indent left_indent secondary_hanging_indent secondary_left_indent indent_to in_module
+    debug && @show base_indent old_indent _string(opening_node) opening_is_substantial prefer_hanging_indent hanging_indent left_indent num_block_indents secondary_hanging_indent secondary_left_indent indent_to in_module
 
     if indent_to != hanging_indent != -1
         @show "Left indenting, updating state."
@@ -440,7 +461,7 @@ function is_opening_substantial(node)
         node′ = move_right(node′)
     end
     @show _string(node′)
-    iskind(node′, K"NewlineWs") && return false, true
+    iskind(node′, K"NewlineWs") && return false, !node_is_operator(node)
     iskind(node′, K"begin", K"while", K"for", K"if",
            K"let", K"try", K"quote") && return false, false
     iskind(node′, K"call", K"vect") && return true, false
