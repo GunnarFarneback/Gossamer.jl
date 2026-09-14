@@ -7,6 +7,7 @@ mutable struct IndentState
     colon_node::Node
     hanging_indents::Int
     num_block_indents::Int
+    conditional_block_indent::Bool
     num_hanging_block_indents::Int
     base_indent::Int
     reference_newline_node::Node
@@ -214,7 +215,13 @@ function format_indent!(root::Node, max_depth::Int)
                 @show _is_opening_substantial
                 @s(opening_is_substantial), indent_block =
                     _is_opening_substantial
-                @s(num_block_indents) += indent_block
+                if iskind(node, K"=")
+                    if !@s(extra_indent_from_continued_expression)
+                        @s(conditional_block_indent) = true
+                    end
+                else
+                    @s(num_block_indents) += indent_block
+                end
             elseif iskind(node, K":")
                 @s(colon_node) = node
             elseif iskind(node, K"?")
@@ -295,6 +302,7 @@ function indent_newline_node!(root, node, states, previous_newline_node)
     block_construction_found = @s(block_construction_found)
     dedent_follows = @s(dedent_follows)
     num_block_indents = @s(num_block_indents)
+    conditional_block_indent = @s(conditional_block_indent)
     num_hanging_block_indents = @s(num_hanging_block_indents)
     ternary_node = @s(ternary_node)
     colon_node = @s(colon_node)
@@ -359,6 +367,9 @@ function indent_newline_node!(root, node, states, previous_newline_node)
     end
 
     # Indentation without consideration of hanging indent.
+    if conditional_block_indent
+        num_block_indents = max(1, num_block_indents)
+    end
     left_indent = base_indent + 4 * num_block_indents
     secondary_left_indent = -1
 
@@ -399,7 +410,7 @@ function indent_newline_node!(root, node, states, previous_newline_node)
         indent_to = left_indent
     end
 
-    debug && @show base_indent old_indent _string(opening_node) opening_is_substantial prefer_hanging_indent num_block_indents indent_to in_module
+    debug && @show base_indent old_indent _string(opening_node) opening_is_substantial prefer_hanging_indent num_block_indents conditional_block_indent indent_to in_module
     debug && @show (hanging_indent, left_indent, secondary_hanging_indent, secondary_left_indent)
 
     if indent_to != hanging_indent != -1
@@ -421,6 +432,13 @@ function indent_newline_node!(root, node, states, previous_newline_node)
     end
     @s(base_indent) = indent_to + base_indent_offset
     @s(num_block_indents) = 0
+    if @s(conditional_block_indent)
+        depth = node.depth
+        while depth >= 1 && states[depth].conditional_block_indent
+            states[depth].conditional_block_indent = false
+            depth -= 1
+        end
+    end
     @s(opening_node) = root
     @s(opening_is_substantial) = false
     @s(colon_node) = root
@@ -502,8 +520,8 @@ function is_opening_substantial(node)
     @show _string(node′)
     iskind(node′, K"NewlineWs") && return false, !node_is_operator(node)
     iskind(node′, K"begin", K"while", K"for", K"if",
-           K"let", K"try", K"quote") && return false, false
-    iskind(node′, K"call", K"vect") && return true, false
+           K"let", K"try", K"quote") && return false, true
+    iskind(node′, K"call", K"vect") && return true, true
     return true, true
 end
 
