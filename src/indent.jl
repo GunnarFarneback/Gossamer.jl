@@ -196,6 +196,12 @@ function format_indent!(root::Node, max_depth::Int)
     end
 
     while !is_root(node)
+        # Do not indent inside multiline strings or commands.
+        if iskind(node, K"string", K"cmdstring")
+            node = move_right_no_descent(node)
+            continue
+        end
+
         debug && println("  ", node.row, " ", node.column, " ", kind(node))
         if !is_leaf(node)
         else
