@@ -382,6 +382,9 @@ function indent_newline_node!(root, node, states, previous_newline_node)
     if indent_to != hanging_indent != -1
         @show "Left indenting, updating state."
         @s(dedent_closing_parenthesis) = true
+        if iskind(node.parent, K"parameters")
+            states[node.parent.depth].dedent_closing_parenthesis = true
+        end
         depth = node.depth
         while depth >= 1 && states[depth].num_block_indents > 0
             @show depth
@@ -463,9 +466,12 @@ end
 function is_opening_substantial(node)
     @show _string(node)
     iskind(node, K"for") && return false, false
-    node′ = move_right(node)
+    node′ = move_right_to_leaf(node)
     if iskind(node′, K"Whitespace")
         node′ = move_right(node′)
+    end
+    if iskind(node, K"(") && iskind(node′, K";")
+        node′ = move_right_to_leaf(node′)
     end
     @show _string(node′)
     iskind(node′, K"NewlineWs") && return false, !node_is_operator(node)
