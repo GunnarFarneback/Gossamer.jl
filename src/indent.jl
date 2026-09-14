@@ -441,9 +441,9 @@ function is_opening_substantial(node)
     end
     @show _string(node′)
     iskind(node′, K"NewlineWs") && return false, true
-    #= iskind(node, K"=") && =# iskind(node′, K"begin", K"while", K"for", K"if",
-                                 K"let", K"try", K"quote",
-                                 K"call", K"vect") && return false, false
+    iskind(node′, K"begin", K"while", K"for", K"if",
+           K"let", K"try", K"quote") && return false, false
+    iskind(node′, K"call", K"vect") && return true, false
     return true, true
 end
 
