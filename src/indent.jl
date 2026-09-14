@@ -206,7 +206,7 @@ function format_indent!(root::Node, max_depth::Int)
         if !is_leaf(node)
         else
             if iskind(node, K"(", K"[", K"{", K"=", K"import", K"using",
-                      K"export", K"public", K"return", K"for")
+                      K"export", K"public", K"return")
                 println("Found opening ", _string(node), " at depth ", node.depth)
                 @s(opening_node) = node
                 @s(num_hanging_block_indents) = 0
@@ -257,6 +257,20 @@ function format_indent!(root::Node, max_depth::Int)
                     println("Found let opening ", _string(node.parent.parent), " at depth ", node.depth)
                     @s(opening_node) = move_left(node.parent)
                     @s(num_hanging_block_indents) = 0
+                    @s(opening_is_substantial) = true
+                end
+            elseif iskind(node.parent, K"iteration")
+                if iskind(node.parent.parent, K"for", K"generator") && iskind(move_left(node.parent), K"for")
+                    println("Found for opening ", _string(node.parent.parent), " at depth ", node.depth)
+                    @s(opening_node) = move_left(node.parent)
+                    @s(num_hanging_block_indents) = 0
+                    @s(num_block_indents) += 1
+                    @s(opening_is_substantial) = true
+                elseif iskind(node.parent.parent, K"filter") && iskind(move_left(node.parent.parent), K"for")
+                    println("Found for opening ", _string(node.parent.parent), " at depth ", node.depth)
+                    @s(opening_node) = move_left(node.parent.parent)
+                    @s(num_hanging_block_indents) = 0
+                    @s(num_block_indents) += 1
                     @s(opening_is_substantial) = true
                 end
             end
@@ -474,7 +488,6 @@ end
 # also count as insubstantial.
 function is_opening_substantial(node)
     @show _string(node)
-    iskind(node, K"for") && return false, false
     node′ = move_right_to_leaf(node)
     if iskind(node′, K"Whitespace")
         node′ = move_right(node′)
