@@ -350,12 +350,14 @@ function indent_newline_node!(root, node, states, previous_newline_node)
 
     @show @s(in_incomplete_expression) @s(extra_indent_from_continued_expression)
     if @s(in_incomplete_expression) && !@s(extra_indent_from_continued_expression)
-        left_indent += 4
+        if num_block_indents == 0
+            left_indent += 4
+        end
         @s(extra_indent_from_continued_expression) = true
     end
 
     base_indent_offset = 0
-    # TODO: Replace by state variable.
+    # TODO: Replace looking left by use of a state variable.
     if iskind(move_left(node), K"function", K"macro")
         left_indent += 4
         base_indent_offset = -4
@@ -383,7 +385,8 @@ function indent_newline_node!(root, node, states, previous_newline_node)
         indent_to = left_indent
     end
 
-    debug && @show base_indent old_indent _string(opening_node) opening_is_substantial prefer_hanging_indent hanging_indent left_indent num_block_indents secondary_hanging_indent secondary_left_indent indent_to in_module
+    debug && @show base_indent old_indent _string(opening_node) opening_is_substantial prefer_hanging_indent num_block_indents indent_to in_module
+    debug && @show (hanging_indent, left_indent, secondary_hanging_indent, secondary_left_indent)
 
     if indent_to != hanging_indent != -1
         @show "Left indenting, updating state."
