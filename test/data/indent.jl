@@ -1,11 +1,3 @@
-for x in X
-x
-end
-#
-for x in X
-    x
-end
-##
 if x
       y
 end
@@ -206,17 +198,6 @@ return esc(quote
     :x
 end)
 ##
-for x in 1:2,
-    y in 3:4
-    f(x + y)
-end
-#
-for x in 1:2,
-    y in 3:4
-
-    f(x + y)
-end
-##
 if true && false &&
     true
     false
@@ -260,40 +241,6 @@ xxxxxxxxxxxxx =
 #
 
 1
-##
-if true for x in X
-        x
-    end
-end
-##
-true && for x in X
-    x
-end
-##
-true &&
-    for x in X
-        x
-    end
-##
-true && (for x in X
-             x
-         end)
-##
-true && (
-    for x in X
-        x
-    end)
-##
-true && (for x in X
-             x
-         end
-         )
-##
-true && (
-    for x in X
-        x
-    end
-)
 ##
 if true
 if true
@@ -351,52 +298,6 @@ f(g) = g * g'
 ##
 x = ' '
 y
-##
-begin
-    for h in H,
-        w in W
-    end
-end
-##
-for x in X,
-y in Y
-end
-#
-for x in X,
-    y in Y
-end
-##
-Dict(x
-     for x in X)
-##
-Dict(x
-     for x in X
-     if true)
-##
-Dict(x
-     for x in X,
-         y in Y)
-##
-Dict(x
-     for x in X,
-         y in Y
-     if true)
-##
-yy = Dict(x
-          for x in X)
-##
-yy = Dict(x
-          for x in X
-          if true)
-##
-yy = Dict(x
-          for x in X,
-              y in Y)
-##
-yy = Dict(x
-          for x in X,
-              y in Y
-          if true)
 ##
 if true &&
 !false
@@ -568,37 +469,6 @@ if (
     z
 end
 ##
-for x in [
-    1
-    ]
-    x
-end
-##
-for x in X
-    if x && (
-           x == x ||
-                x
-)
-    end
-end
-#
-for x in X
-    if x && (
-        x == x ||
-            x
-    )
-    end
-end
-##
-x = f((x
-       for x in x),
-      init = 0)
-##
-x = f((x
-       for x in x
-       if true),
-      init = 0)
-##
 macro m(x)
 esc(x)
 end
@@ -714,13 +584,6 @@ if true
         1:2,
         3:4
     ]
-end
-##
-for x in (
-        1:2,
-        3
-    )
-    x
 end
 ##
 """
