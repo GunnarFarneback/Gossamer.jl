@@ -9,14 +9,7 @@ function format_node!(node::Node)
     isempty(node.children) && return
 
     format_spaces!(node)
-    max_depth = 0
-    node′ = node
-    while true
-        node′ = move_right(node′)
-        is_root(node′) && break
-        max_depth = max(max_depth, node′.depth)
-    end
-    format_indent!(node, max_depth)
+    format_indent!(node)
 end
 
 function format_spaces!(node::Node)

@@ -180,9 +180,10 @@ function restructure_do!(node)
     adjust_depth!.(@view(node1.children[2:end]), -1)
 end
 
-function format_indent!(root::Node, max_depth::Int)
+function format_indent!(root::Node)
     move_newlines!(root)
-    states = [IndentState(root) for _ in 1:max_depth]
+
+    states = [IndentState(root) for _ in 1:max_tree_depth(root)]
     previous_newline_node = root
 
     node = move_right(root)
@@ -290,6 +291,18 @@ function format_indent!(root::Node, max_depth::Int)
     if iskind(node, K"Whitespace")
         node.text = rstrip(node.text, (' ', '\t'))
     end
+end
+
+function max_tree_depth(root)
+    # Determine maximum tree depth.
+    max_depth = 0
+    node = root
+    while true
+        node = move_right(node)
+        is_root(node) && break
+        max_depth = max(max_depth, node.depth)
+    end
+    return max_depth
 end
 
 # Perform the actual reindentation.
