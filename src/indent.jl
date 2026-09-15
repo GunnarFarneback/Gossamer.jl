@@ -102,6 +102,8 @@ function move_newlines!(root::Node)
             #continue
         elseif !is_leaf(node) && iskind(node, K"do") && iskind(node.parent, K"call") && iskind(move_left(node), K")") && is_last_sibling(node)
             restructure_do!(node)
+        elseif !is_leaf(node) && iskind(node, K"if", K"while") && iskind(first(node.children), K"if", K"while")
+            restructure_if_and_while!(node)
         end
         node = move_left(node)
     end
@@ -178,6 +180,91 @@ function restructure_do!(node)
     refresh_parent_and_index_for_children!(node2)
     adjust_depth!.(node2.children, 1)
     adjust_depth!.(@view(node1.children[2:end]), -1)
+end
+
+# JuliaSyntax representation of `if` and `while` constructions are not
+# ideal for formatting to work with.
+# Simplified they have the structure
+#
+#   [if]
+#     if
+#     ...
+#     [block]
+#     end
+#
+# where `...` are all nodes involved in the condition.
+#
+# We would rather prefer to have it structured like
+#
+#   [if]
+#     if
+#     [condition]
+#       ...
+#     [block]
+#     end
+#
+# with the condition nodes collected in an umbrella node. However,
+# there is no `condition` kind in JuliaSyntax, so we borrow the
+# `wrapper` kind instead.
+#
+# `while` is structured the same as `if` and is transformed
+# identically. The `if` case does become somewhat more complicated in
+# the presence of `elseif` and `else` but in practice that has only
+# minor impact on the transformation.
+function restructure_if_and_while!(node)
+    # Step 1, find the last `block` node, not immediately following an
+    # `else`. (There can be additional `block` nodes in the condition
+    # and one more block after `else`).
+    #
+    #   [if]
+    #     if
+    #     ...
+    #     [block]   * this *
+    #     end
+    final_block_index = -1
+    for i in length(node.children):-1:2
+        if iskind(node.children[i], K"block") && !iskind(node.children[i - 1], K"else")
+            final_block_index = i
+            break
+        end
+    end
+
+    if final_block_index < 2
+        # This shouldn't happen, but if it does we just skip the
+        # transformation.
+        return
+    end
+    final_block_node = node.children[final_block_index]
+
+    # Step 2, insert an empty wrapper node as second child.
+    #
+    #   [if]
+    #     if
+    #     [wrapper]
+    #     ...
+    #     [block]
+    #     end
+    wrapper = Node(Node[], 2, 0, 0, "", SyntaxHead(K"wrapper", 0x0000), node)
+    insert!(node.children, 2, wrapper)
+    wrapper.is_leaf = false
+
+    # Step 3, move the condition nodes into the wrapper node.
+    #
+    #
+    #   [if]
+    #     if
+    #     [wrapper]
+    #       ...
+    #     [block]
+    #     end
+    while node.children[3] !== final_block_node
+        push!(wrapper.children, popat!(node.children, 3))
+    end
+
+    # Step 4, fix the tree internal consistency.
+    refresh_parent_and_index_for_children!(node)
+    refresh_parent_and_index_for_children!(wrapper)
+    adjust_depth!.(wrapper.children, 1)
 end
 
 function format_indent!(root::Node)
@@ -281,6 +368,19 @@ function format_indent!(root::Node)
                     @s(num_block_indents) += 1
                     @s(opening_is_substantial) = true
                 end
+            elseif iskind(node.parent, K"wrapper")
+                # Notes: K"wrapper" is a kind that we have inserted
+                # into the tree ourselves. We don't bother to check
+                # that we have matching if/while nodes below, because
+                # JuliaSyntax wouldn't create that and even if it did,
+                # it wouldn't necessarily affect the formatting.
+                if iskind(node.parent.parent, K"if", K"while") && iskind(move_left(node.parent), K"if", K"while")
+                    println("Found if/while opening ", _string(node.parent.parent), " at depth ", node.depth)
+                    @s(opening_node) = move_left(node.parent)
+                    @s(num_hanging_block_indents) = 0
+                    @s(num_block_indents) += 1
+                    @s(opening_is_substantial) = false
+                end
             end
 
         end
@@ -345,7 +445,8 @@ function indent_newline_node!(root, node, states, previous_newline_node)
     if !is_root(opening_node)
         opening_column = (get_column(opening_node) + length(opening_node.text)
                           + iskind(opening_node, K"let", K"import", K"using",
-                                   K"export", K"public", K"return", K"for"))
+                                   K"export", K"public", K"return", K"for",
+                                   K"if", K"while"))
     end
 
     hanging_indent = -1
