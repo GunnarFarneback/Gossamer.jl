@@ -321,7 +321,7 @@ function format_indent!(root::Node)
         end
 
         # Colons are handled separately with colon_node etc.
-        if node_is_operator(node) && !iskind(node, K":")
+        if node_is_operator(node) && !iskind(node, K":") && iskind(move_right(node), K"NewlineWs")
             @s(in_incomplete_expression) = true
         elseif !iskind(node, K"Whitespace", K"NewlineWs") && is_leaf(node)
             @s(in_incomplete_expression) = false
