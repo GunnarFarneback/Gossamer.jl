@@ -102,7 +102,7 @@ function move_newlines!(root::Node)
             #continue
         elseif !is_leaf(node) && iskind(node, K"do") && iskind(node.parent, K"call", K"dotcall") && iskind(move_left(node), K")") && is_last_sibling(node)
             restructure_do!(node)
-        elseif !is_leaf(node) && iskind(node, K"if", K"while") && iskind(first(node.children), K"if", K"while")
+        elseif !is_leaf(node) && iskind(node, K"if", K"elseif", K"while") && iskind(first(node.children), K"if", K"elseif", K"while")
             restructure_if_and_while!(node)
         end
         node = move_left(node)
@@ -210,7 +210,9 @@ end
 # `while` is structured the same as `if` and is transformed
 # identically. The `if` case does become somewhat more complicated in
 # the presence of `elseif` and `else` but in practice that has only
-# minor impact on the transformation.
+# minor impact on the transformation. However, `elseif` in turn needs
+# the same transformation as `if`. (That does not require recursion;
+# this function is just called on both the `if` and `elseif` nodes.)
 function restructure_if_and_while!(node)
     # Step 1, find the last `block` node, not immediately following an
     # `else`. (There can be additional `block` nodes in the condition
@@ -374,7 +376,7 @@ function format_indent!(root::Node)
                 # that we have matching if/while nodes below, because
                 # JuliaSyntax wouldn't create that and even if it did,
                 # it wouldn't necessarily affect the formatting.
-                if iskind(node.parent.parent, K"if", K"while") && iskind(move_left(node.parent), K"if", K"while")
+                if iskind(node.parent.parent, K"if", K"elseif", K"while") && iskind(move_left(node.parent), K"if", K"elseif", K"while")
                     println("Found if/while opening ", _string(node.parent.parent), " at depth ", node.depth)
                     @s(opening_node) = move_left(node.parent)
                     @s(num_hanging_block_indents) = 0
@@ -446,7 +448,7 @@ function indent_newline_node!(root, node, states, previous_newline_node)
         opening_column = (get_column(opening_node) + length(opening_node.text)
                           + iskind(opening_node, K"let", K"import", K"using",
                                    K"export", K"public", K"return", K"for",
-                                   K"if", K"while"))
+                                   K"if", K"elseif", K"while"))
     end
 
     hanging_indent = -1
@@ -634,7 +636,7 @@ function is_opening_substantial(node)
     end
     @show _string(node′)
     iskind(node′, K"NewlineWs") && return false, !node_is_operator(node)
-    iskind(node′, K"begin", K"while", K"for", K"if",
+    iskind(node′, K"begin", K"while", K"for", K"if", K"elseif",
            K"let", K"try", K"quote") && return false, true
     iskind(node′, K"call", K"dotcall", K"vect") && return true, true
     return true, true
