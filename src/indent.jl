@@ -279,11 +279,7 @@ function format_indent!(root::Node)
 
     # Trim space from the very start of the file.
     if iskind(node, K"Whitespace")
-        reference_text = node.text
         node.text = lstrip(node.text, (' ', '\t'))
-        if node.text != reference_text
-            invalidate_column_for_rest_of_row(node)
-        end
     end
 
     while !is_root(node)
@@ -432,14 +428,15 @@ function indent_newline_node!(root, node, states, previous_newline_node)
     if is_not_indented_comment(move_right(node)) ||
         is_multiline_string_or_cmd(move_right(node))
 
+        node.text = lstrip(node.text, (' ', '\t'))
         return
     end
 
     # If whitespace only line, strip it down and leave the indentation
     # state unchanged.
     if iskind(move_right(node), K"NewlineWs")
-        # TODO: This is likely somewhat oversimplified.
-        node.text = "\n"
+        before, after = split(node.text, "\n")
+        node.text = lstrip(before, (' ', '\t')) * "\n"
         return
     end
 
