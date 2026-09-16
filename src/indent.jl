@@ -301,7 +301,7 @@ function format_indent!(root::Node)
                 debug && @show _is_opening_substantial
                 @s(opening_is_substantial), indent_block =
                     _is_opening_substantial
-                if iskind(node, K"=")
+                if iskind(node, K"=", K"return")
                     if !@s(extra_indent_from_continued_expression)
                         @s(conditional_block_indent) = true
                     end
