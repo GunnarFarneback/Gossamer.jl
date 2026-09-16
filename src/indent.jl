@@ -1,4 +1,4 @@
-debug = !false
+debug = false
 
 mutable struct IndentState
     opening_node::Node
@@ -298,11 +298,11 @@ function format_indent!(root::Node)
         else
             if iskind(node, K"(", K"[", K"{", K"=", K"import", K"using",
                       K"export", K"public", K"return")
-                println("Found opening ", _string(node), " at depth ", node.depth)
+                debug && println("Found opening ", _string(node), " at depth ", node.depth)
                 @s(opening_node) = node
                 @s(num_hanging_block_indents) = 0
                 _is_opening_substantial = is_opening_substantial(node)
-                @show _is_opening_substantial
+                debug && @show _is_opening_substantial
                 @s(opening_is_substantial), indent_block =
                     _is_opening_substantial
                 if iskind(node, K"=")
@@ -343,7 +343,7 @@ function format_indent!(root::Node)
 
             if iskind(node.parent, K"block")
                 if true
-                    @show "incrementing num_hanging_block_indents at depth $(node.depth)"
+                    debug && @show "incrementing num_hanging_block_indents at depth $(node.depth)"
                     @s(num_block_indents) += 1
                     @s(num_hanging_block_indents) += 1
                 end
@@ -351,20 +351,20 @@ function format_indent!(root::Node)
                     @s(in_module) = true
                 end
                 if iskind(node.parent.parent, K"let") && iskind(move_left(node.parent), K"let")
-                    println("Found let opening ", _string(node.parent.parent), " at depth ", node.depth)
+                    debug && println("Found let opening ", _string(node.parent.parent), " at depth ", node.depth)
                     @s(opening_node) = move_left(node.parent)
                     @s(num_hanging_block_indents) = 0
                     @s(opening_is_substantial) = true
                 end
             elseif iskind(node.parent, K"iteration")
                 if iskind(node.parent.parent, K"for", K"generator") && iskind(move_left(node.parent), K"for")
-                    println("Found for opening ", _string(node.parent.parent), " at depth ", node.depth)
+                    debug && println("Found for opening ", _string(node.parent.parent), " at depth ", node.depth)
                     @s(opening_node) = move_left(node.parent)
                     @s(num_hanging_block_indents) = 0
                     @s(num_block_indents) += 1
                     @s(opening_is_substantial) = true
                 elseif iskind(node.parent.parent, K"filter") && iskind(move_left(node.parent.parent), K"for")
-                    println("Found for opening ", _string(node.parent.parent), " at depth ", node.depth)
+                    debug && println("Found for opening ", _string(node.parent.parent), " at depth ", node.depth)
                     @s(opening_node) = move_left(node.parent.parent)
                     @s(num_hanging_block_indents) = 0
                     @s(num_block_indents) += 1
@@ -377,7 +377,7 @@ function format_indent!(root::Node)
                 # JuliaSyntax wouldn't create that and even if it did,
                 # it wouldn't necessarily affect the formatting.
                 if iskind(node.parent.parent, K"if", K"elseif", K"while") && iskind(move_left(node.parent), K"if", K"elseif", K"while")
-                    println("Found if/while opening ", _string(node.parent.parent), " at depth ", node.depth)
+                    debug && println("Found if/while opening ", _string(node.parent.parent), " at depth ", node.depth)
                     @s(opening_node) = move_left(node.parent)
                     @s(num_hanging_block_indents) = 0
                     @s(num_block_indents) += 1
@@ -455,7 +455,7 @@ function indent_newline_node!(root, node, states, previous_newline_node)
     secondary_hanging_indent = -1
     prefer_hanging_indent = false
     if !is_root(opening_node)
-        @show opening_column num_hanging_block_indents
+        debug && @show opening_column num_hanging_block_indents
         hanging_indent = (opening_column + node_is_operator(opening_node) - 1
                           + 4 * num_hanging_block_indents)
         prefer_hanging_indent = opening_is_substantial
@@ -489,7 +489,7 @@ function indent_newline_node!(root, node, states, previous_newline_node)
     left_indent = base_indent + 4 * num_block_indents
     secondary_left_indent = -1
 
-    @show @s(in_incomplete_expression) @s(extra_indent_from_continued_expression)
+    debug && @show @s(in_incomplete_expression) @s(extra_indent_from_continued_expression)
     if @s(in_incomplete_expression) && !@s(extra_indent_from_continued_expression)
         if num_block_indents == 0
             secondary_left_indent = left_indent
@@ -531,14 +531,14 @@ function indent_newline_node!(root, node, states, previous_newline_node)
     debug && @show (hanging_indent, left_indent, secondary_hanging_indent, secondary_left_indent)
 
     if indent_to != hanging_indent != -1
-        @show "Left indenting, updating state."
+        debug && @show "Left indenting, updating state."
         @s(dedent_closing_parenthesis) = true
         if iskind(node.parent, K"parameters")
             states[node.parent.depth].dedent_closing_parenthesis = true
         end
         depth = node.depth
         while depth >= 1 && states[depth].num_block_indents > 0
-            @show depth
+            debug && @show depth
             states[depth].opening_node = root
             states[depth].num_hanging_block_indents = 0
             states[depth].opening_is_substantial = false
@@ -626,7 +626,6 @@ end
 # immediately followed by a newline. For assignments certain operators
 # also count as insubstantial.
 function is_opening_substantial(node)
-    @show _string(node)
     node′ = move_right_to_leaf(node)
     if iskind(node′, K"Whitespace")
         node′ = move_right(node′)
@@ -634,7 +633,6 @@ function is_opening_substantial(node)
     if iskind(node, K"(") && iskind(node′, K";")
         node′ = move_right_to_leaf(node′)
     end
-    @show _string(node′)
     iskind(node′, K"NewlineWs") && return false, !node_is_operator(node)
     iskind(node′, K"begin", K"while", K"for", K"if", K"elseif",
            K"let", K"try", K"quote") && return false, true
