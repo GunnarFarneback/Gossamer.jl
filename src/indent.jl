@@ -84,7 +84,7 @@ function move_newlines!(root::Node)
                 # Newline as last sibling, move it out to parent.
                 move_last_sibling_out_of_node!(node)
                 continue
-            elseif is_first_sibling(node) && iskind(parent, K"call", K"importpath", K"as", K"=")
+            elseif is_first_sibling(node) && iskind(parent, K"call", K"dotcall", K"importpath", K"as", K"=")
                 move_first_sibling_out_of_node!(node)
                 continue
             else
@@ -100,7 +100,7 @@ function move_newlines!(root::Node)
         elseif iskind(node, K"end") && iskind(parent, K"block") && is_last_sibling(node)
             move_last_sibling_out_of_node!(node)
             #continue
-        elseif !is_leaf(node) && iskind(node, K"do") && iskind(node.parent, K"call") && iskind(move_left(node), K")") && is_last_sibling(node)
+        elseif !is_leaf(node) && iskind(node, K"do") && iskind(node.parent, K"call", K"dotcall") && iskind(move_left(node), K")") && is_last_sibling(node)
             restructure_do!(node)
         elseif !is_leaf(node) && iskind(node, K"if", K"while") && iskind(first(node.children), K"if", K"while")
             restructure_if_and_while!(node)
@@ -636,7 +636,7 @@ function is_opening_substantial(node)
     iskind(node′, K"NewlineWs") && return false, !node_is_operator(node)
     iskind(node′, K"begin", K"while", K"for", K"if",
            K"let", K"try", K"quote") && return false, true
-    iskind(node′, K"call", K"vect") && return true, true
+    iskind(node′, K"call", K"dotcall", K"vect") && return true, true
     return true, true
 end
 
