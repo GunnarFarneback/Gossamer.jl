@@ -571,7 +571,7 @@ function indent_newline_node!(root, node, states, previous_newline_node)
     # are unrelated, separate the lines with an empty line. Don't do
     # this for empty blocks or when the previous line is a closing
     # character or end.
-    if !is_root(previous_newline_node) && iskind(move_left(node), K"block") && !is_leaf(move_left(node)) && indent_to == indentation_of_node(previous_newline_node)
+    if !is_root(previous_newline_node) && iskind(move_left(node), K"block") && !is_leaf(move_left(node)) && !iskind(move_left(node).parent, K"module", K"baremodule") && indent_to == indentation_of_node(previous_newline_node)
         prev = move_right(previous_newline_node)
         if !(iskind(prev, K"end", K")", K"]", K"}"))
             insert_leaf_node!(node.parent, node.index, K"NewlineWs", "\n")
