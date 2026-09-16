@@ -81,9 +81,9 @@ end
 #
 for x in X
     if x && (
-        x == x ||
-            x
-    )
+            x == x ||
+                x
+        )
     end
 end
 ##

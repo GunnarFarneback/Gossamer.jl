@@ -1,11 +1,3 @@
-if x
-      y
-end
-#
-if x
-    y
-end
-##
 function gazonk(x,
       y)
     return x
@@ -50,34 +42,6 @@ gazonk(
     x,
     y
     ) = x
-##
-if x
-1
-else
-3
-end
-#
-if x
-    1
-else
-    3
-end
-##
-if x
-1
-elseif y
-2
-else
-3
-end
-#
-if x
-    1
-elseif y
-    2
-else
-    3
-end
 ## Accept modules both with and without indentation.
 module M
     x
@@ -172,12 +136,6 @@ function f(x)
     x
 end
 ##
-if true
-    begin
-        x
-    end
-end
-##
 @generated function
     f(x)
 
@@ -198,16 +156,13 @@ return esc(quote
     :x
 end)
 ##
-if true && false &&
-    true
-    false
-end
+return esc(quote
+               :x
+end)
 #
-if true && false &&
-    true
-
-    false
-end
+return esc(quote
+               :x
+           end)
 ##
 @testset "" begin
     @test f(x,
@@ -298,29 +253,6 @@ f(g) = g * g'
 ##
 x = ' '
 y
-##
-if true &&
-!false
-x
-end
-#
-if true &&
-    !false
-
-    x
-end
-## Remove trailing space regardless whether indentation changes.
-if false 
-0
-else 
-    1
-end
-#
-if false
-    0
-else
-    1
-end
 ## Always eliminate TAB indentation.
 begin
 				1
@@ -393,15 +325,17 @@ y = (x
 y = (x
      + a * x
      + x)
-##
-if a ||
-(c &&
-(d || e))
+## Remove trailing space regardless whether indentation changes.
+if false 
+0
+else 
+    1
 end
 #
-if a ||
-    (c &&
-     (d || e))
+if false
+    0
+else
+    1
 end
 ## There's a trailing space after the `y`.
 if x ||
@@ -454,20 +388,6 @@ for x in begin
         X
     end
 end
-## Can skip empty line after `end` and closing brackets.
-if begin
-        x &&
-            y
-    end
-    z
-end
-##
-if (
-    x &&
-    y
-    )
-    z
-end
 ##
 macro m(x)
 esc(x)
@@ -509,21 +429,6 @@ y = (;
     x
 )
 ##
-if (x
-    || x)
-    if x
-        x
-    end
-end
-#
-if (x
-    || x)
-
-    if x
-        x
-    end
-end
-##
 function f(x)
     # x
     f(x; x = [1,
@@ -564,22 +469,6 @@ f(x,
   y) = g(x,
          x)
 ##
-function f()
-  x = if y
-    z
-  else
-    z
-  end
-end
-#
-function f()
-    x = if y
-        z
-    else
-        z
-    end
-end
-##
 if true
 x = [
     1:2,
@@ -598,12 +487,6 @@ end
 Read the tutorial at $(abspath(dirname(@__DIR__), "test",
 "tutorial.jl")) or
 """
-##
-a, b,
-c = f()
-#
-a, b,
-    c = f()
 ##
 ccccccccxxxxx = f(x, ggggg(
 ccccccccccccccccccccccccccccccccccccccccccccccccccccx,

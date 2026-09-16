@@ -41,6 +41,22 @@ yyy = f() do x
     x
 end
 ##
+yyy = f() do x
+x
+end
+#
+yyy = f() do x
+    x
+end
+##
+yyy = f() do x
+          x
+end
+#
+yyy = f() do x
+          x
+      end
+##
 fffffff(x,
         y) do z
     z
