@@ -72,3 +72,27 @@ function f3()
  =#
             x ? x : y
 end
+## Primary
+f(xxx, xxx ? xxx :
+xxx)
+#
+f(xxx, xxx ? xxx :
+             xxx)
+## Secondary
+f(xxx, xxx ? xxx :
+       xxx)
+## Secondary
+f(xxx, xxx ? xxx :
+    xxx)
+## Primary
+f(xxx, xxx ? xxx :
+xxx ? xxx : xxx)
+#
+f(xxx, xxx ? xxx :
+       xxx ? xxx : xxx)
+## Secondary
+f(xxx, xxx ? xxx :
+             xxx ? xxx : xxx)
+## Secondary
+f(xxx, xxx ? xxx :
+    xxx ? xxx : xxx)

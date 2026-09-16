@@ -42,14 +42,6 @@ gazonk(
     x,
     y
     ) = x
-## Accept modules both with and without indentation.
-module M
-    x
-end
-##
-module M
-x
-end
 ##
 export x,
        y
@@ -519,3 +511,24 @@ ccccccccxxxxx = f(x, ggggg(x,
                            ),
                   x
                   )
+## If the choice was not to indent the continued expression on the
+## first continuation line, prefer staying with that decision.
+x = x &&
+    x &&
+x
+#
+x = x &&
+    x &&
+    x
+## No switching back to not indenting.
+x = x &&
+        x &&
+    x
+#
+x = x &&
+        x &&
+        x
+##
+x = Dict(3 => 1,
+
+         4 => 2)
