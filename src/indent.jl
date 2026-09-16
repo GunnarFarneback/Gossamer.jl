@@ -85,7 +85,11 @@ function move_newlines!(root::Node)
                 move_last_sibling_out_of_node!(node)
                 continue
             elseif is_first_sibling(node) && iskind(parent, K"call", K"dotcall", K"importpath", K"as", K"=")
+                # Might be multiple newlines to move out, so we may
+                # need to backtrack.
+                next = move_right(node)
                 move_first_sibling_out_of_node!(node)
+                node = next
                 continue
             else
                 next = move_right(node)
