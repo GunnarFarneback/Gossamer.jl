@@ -454,6 +454,7 @@ function indent_newline_node!(root, node, states, previous_newline_node)
 
     hanging_indent = -1
     secondary_hanging_indent = -1
+    tertiary_hanging_indent = -1
     prefer_hanging_indent = false
     if !is_root(opening_node)
         debug && @show opening_column num_hanging_block_indents
@@ -466,8 +467,22 @@ function indent_newline_node!(root, node, states, previous_newline_node)
             prefer_hanging_indent = !iskind(move_right(colon_node),
                                             K"NewlineWs")
         elseif !is_root(ternary_node)
-            secondary_hanging_indent = hanging_indent
-            hanging_indent = get_column(ternary_node) + 1
+            ternary_column = get_column(ternary_node) + 1
+            node′ = first(ternary_node.parent.children)
+            if iskind(node′, K"NewlineWs", K"Whitespace", K"Comment")
+                node′ = move_right(node′)
+            end
+            ternary_start_column = get_column(node′) - 1
+            if iskind(node.parent, K"?") && node.parent.depth == ternary_node.depth
+                # A new ternary inside a ternary.
+                tertiary_hanging_indent = hanging_indent
+                secondary_hanging_indent = ternary_column
+                hanging_indent = ternary_start_column
+            else
+                tertiary_hanging_indent = hanging_indent
+                secondary_hanging_indent = ternary_start_column
+                hanging_indent = ternary_column
+            end
             prefer_hanging_indent = !iskind(move_right(ternary_node),
                                             K"NewlineWs")
         end
@@ -477,7 +492,23 @@ function indent_newline_node!(root, node, states, previous_newline_node)
         prefer_hanging_indent = colon_is_substantial
         num_block_indents += !colon_is_substantial
     elseif !is_root(ternary_node)
-        hanging_indent = get_column(ternary_node) + 1
+        ternary_column = get_column(ternary_node) + 1
+        node′ = first(ternary_node.parent.children)
+        if iskind(node′, K"NewlineWs", K"Whitespace", K"Comment")
+            node′ = move_right(node′)
+        end
+        ternary_start_column = get_column(node′) - 1
+        if iskind(node.parent, K"?") && node.parent.depth == ternary_node.depth
+            # A new ternary inside a ternary.
+            tertiary_hanging_indent = hanging_indent
+            secondary_hanging_indent = ternary_column
+            hanging_indent = ternary_start_column
+        else
+            tertiary_hanging_indent = hanging_indent
+            secondary_hanging_indent = ternary_start_column
+            hanging_indent = ternary_column
+        end
+
         ternary_is_substantial = !iskind(move_right(ternary_node), K"NewlineWs")
         prefer_hanging_indent = ternary_is_substantial
         num_block_indents += !ternary_is_substantial
@@ -520,7 +551,7 @@ function indent_newline_node!(root, node, states, previous_newline_node)
     reference_text = node.text
     old_indent = indentation_of_node(node)
 
-    if old_indent == hanging_indent || old_indent == left_indent || old_indent == secondary_hanging_indent || old_indent == secondary_left_indent
+    if old_indent == hanging_indent || old_indent == left_indent || old_indent == secondary_hanging_indent || old_indent == secondary_left_indent || old_indent == tertiary_hanging_indent
         indent_to = old_indent
     elseif prefer_hanging_indent
         indent_to = hanging_indent
@@ -529,7 +560,10 @@ function indent_newline_node!(root, node, states, previous_newline_node)
     end
 
     debug && @show base_indent old_indent _string(opening_node) opening_is_substantial prefer_hanging_indent num_block_indents conditional_block_indent indent_to in_module
-    debug && @show (hanging_indent, left_indent, secondary_hanging_indent, secondary_left_indent)
+    if debug
+        indent_options = (hanging_indent, left_indent, secondary_hanging_indent, secondary_left_indent, tertiary_hanging_indent)
+        @show indent_options
+    end
 
     if indent_to != hanging_indent != -1
         debug && @show "Left indenting, updating state."

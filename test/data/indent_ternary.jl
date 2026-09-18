@@ -32,7 +32,7 @@ function f1()
         x ? x :
         #
         x ? x :
-            x ? x : y
+        x ? x : y
 end
 ##
 function f2()
@@ -50,7 +50,7 @@ function f2()
         #
         x ? x :
 ###
-            x ? x : y
+        x ? x : y
 end
 ##
 function f3()
@@ -70,7 +70,7 @@ function f3()
         x ? x :
  #=
  =#
-            x ? x : y
+        x ? x : y
 end
 ## Primary
 f(xxx, xxx ? xxx :
@@ -83,6 +83,9 @@ f(xxx, xxx ? xxx :
        xxx)
 ## Secondary
 f(xxx, xxx ? xxx :
+  xxx)
+## Secondary (left indent)
+f(xxx, xxx ? xxx :
     xxx)
 ## Primary
 f(xxx, xxx ? xxx :
@@ -93,6 +96,9 @@ f(xxx, xxx ? xxx :
 ## Secondary
 f(xxx, xxx ? xxx :
              xxx ? xxx : xxx)
+## Secondary
+f(xxx, xxx ? xxx :
+  xxx ? xxx : xxx)
 ## Secondary
 f(xxx, xxx ? xxx :
     xxx ? xxx : xxx)
