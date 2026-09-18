@@ -323,7 +323,7 @@ function format_indent!(root::Node)
         end
 
         # Colons are handled separately with colon_node etc.
-        if node_is_operator(node) && !iskind(node, K":") && iskind(move_right_to_leaf(node), K"NewlineWs")
+        if (node_is_operator(node) || is_comma_in_bare_tuple(node)) && !iskind(node, K":") && iskind(move_right_to_leaf(node), K"NewlineWs")
             @s(in_incomplete_expression) = true
         elseif !iskind(node, K"Whitespace", K"NewlineWs") && is_leaf(node)
             @s(in_incomplete_expression) = false
@@ -656,6 +656,12 @@ function indent_newline_node!(root, node, states, previous_newline_node)
         end
     end
     =#
+end
+
+function is_comma_in_bare_tuple(node)
+    iskind(node, K",") || return false
+    iskind(node.parent, K"tuple") || return false
+    return !iskind(first(node.parent.children), K"(")
 end
 
 # Check whether an opening node is substantial, i.e. that it is not
