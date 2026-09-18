@@ -293,7 +293,7 @@ function format_indent!(root::Node)
             continue
         end
 
-        debug && println("  ", node.row, " ", node.column, " ", kind(node))
+        debug && println(_string(node))
         if !is_leaf(node)
         else
             if iskind(node, K"(", K"[", K"{", K"=", K"import", K"using",
@@ -323,7 +323,7 @@ function format_indent!(root::Node)
         end
 
         # Colons are handled separately with colon_node etc.
-        if node_is_operator(node) && !iskind(node, K":") && iskind(move_right(node), K"NewlineWs")
+        if node_is_operator(node) && !iskind(node, K":") && iskind(move_right_to_leaf(node), K"NewlineWs")
             @s(in_incomplete_expression) = true
         elseif !iskind(node, K"Whitespace", K"NewlineWs") && is_leaf(node)
             @s(in_incomplete_expression) = false
@@ -339,7 +339,6 @@ function format_indent!(root::Node)
             if !@s(in_incomplete_expression)
                 @s(extra_indent_from_continued_expression) = false
             end
-            @s(in_incomplete_expression) = false
 
             if iskind(node.parent, K"block")
                 if true
@@ -485,6 +484,8 @@ function indent_newline_node!(root, node, states, previous_newline_node)
             end
             prefer_hanging_indent = !iskind(move_right(ternary_node),
                                             K"NewlineWs")
+        elseif @s(in_incomplete_expression) && !@s(extra_indent_from_continued_expression)
+            secondary_hanging_indent = hanging_indent + 4
         end
     elseif !is_root(colon_node) && iskind(colon_node.parent.parent, K"import", K"using")
         hanging_indent = get_column(colon_node) + 1
