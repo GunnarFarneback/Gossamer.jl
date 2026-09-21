@@ -283,7 +283,11 @@ function format_indent!(root::Node)
 
     # Trim space from the very start of the file.
     if iskind(node, K"Whitespace")
+        reference_text = node.text
         node.text = lstrip(node.text, (' ', '\t'))
+        if node.text != reference_text
+            invalidate_column_for_rest_of_row(node)
+        end
     end
 
     while !is_root(node)
