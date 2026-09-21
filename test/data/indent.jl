@@ -532,3 +532,9 @@ x = x &&
 x = Dict(3 => 1,
 
          4 => 2)
+## Don't get confused by first line leading space.
+        f(x,
+y)
+#
+f(x,
+  y)

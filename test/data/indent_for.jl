@@ -64,9 +64,21 @@ end
 for x in X,
     y in Y
 end
-## Questionable test case. The element should rather have another indentation.
+##
 for x in [
     1
+    ]
+    x
+end
+##
+for x in [
+   1
+    ]
+    x
+end
+#
+for x in [
+        1
     ]
     x
 end
