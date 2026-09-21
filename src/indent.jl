@@ -19,6 +19,7 @@ mutable struct IndentState
     dedent_closing_parenthesis::Bool
     in_incomplete_expression::Bool
     extra_indent_from_continued_expression::Bool
+    disable_left_indent::Bool
 
     # TODO: Once the code is sufficiently stable, replace this with a
     # standard constructor of the actual fields.
@@ -339,6 +340,7 @@ function format_indent!(root::Node)
             @assert node.depth == depth + 1
             copy_state!(states[depth + 1], states[depth])
             @s(in_module) = false
+            @s(disable_left_indent) = false
             @s(dedent_closing_parenthesis) = false
             if !@s(in_incomplete_expression)
                 @s(extra_indent_from_continued_expression) = false
@@ -429,6 +431,7 @@ function indent_newline_node!(root, node, states, previous_newline_node)
     base_indent = @s(base_indent)
     in_module = @s(in_module)
     dedent_closing_parenthesis = @s(dedent_closing_parenthesis)
+    disable_left_indent = @s(disable_left_indent)
 
     # Do not indent lines starting with `#` in the first column.
     # Do not indent multiline strings or commands.
@@ -523,12 +526,18 @@ function indent_newline_node!(root, node, states, previous_newline_node)
     if conditional_block_indent
         num_block_indents = max(1, num_block_indents)
     end
-    left_indent = base_indent + 4 * num_block_indents
+    left_indent = -1
     secondary_left_indent = -1
+    if !disable_left_indent
+        left_indent = base_indent + 4 * num_block_indents
+        if num_block_indents > 1
+            secondary_left_indent = base_indent + 4
+        end
+    end
 
     debug && @show @s(in_incomplete_expression) @s(extra_indent_from_continued_expression)
     if @s(in_incomplete_expression) && !@s(extra_indent_from_continued_expression)
-        if num_block_indents == 0
+        if num_block_indents == 0 && !disable_left_indent
             secondary_left_indent = left_indent
             left_indent += 4
         end
@@ -537,18 +546,20 @@ function indent_newline_node!(root, node, states, previous_newline_node)
 
     base_indent_offset = 0
     # TODO: Replace looking left by use of a state variable.
-    if iskind(move_left(node), K"function", K"macro")
+    if iskind(move_left(node), K"function", K"macro") && !disable_left_indent
         left_indent += 4
         base_indent_offset = -4
     end
 
     #if is_root(opening_node) && iskind(move_right(node), K")", K"]", K"}")
-    if dedent_closing_parenthesis && iskind(move_right(node), K")", K"]", K"}")
-        secondary_left_indent = left_indent
-        left_indent -= 4
-    elseif in_module
-        secondary_left_indent = left_indent
-        left_indent -= 4
+    if !disable_left_indent
+        if dedent_closing_parenthesis && iskind(move_right(node), K")", K"]", K"}")
+            secondary_left_indent = left_indent
+            left_indent -= 4
+        elseif in_module
+            secondary_left_indent = left_indent
+            left_indent -= 4
+        end
     end
 
     # Remove trailing space and convert indenting tabs to spaces.
@@ -570,7 +581,7 @@ function indent_newline_node!(root, node, states, previous_newline_node)
         @show indent_options
     end
 
-    if indent_to != hanging_indent != -1
+    if (indent_to != hanging_indent != -1) && indent_to != secondary_hanging_indent && indent_to != tertiary_hanging_indent
         debug && @show "Left indenting, updating state."
         @s(dedent_closing_parenthesis) = true
         if iskind(node.parent, K"parameters")
@@ -585,7 +596,25 @@ function indent_newline_node!(root, node, states, previous_newline_node)
             states[depth].dedent_closing_parenthesis = true
             depth -= 1
         end
-    else
+
+        if num_block_indents > 1 && indent_to == secondary_left_indent
+            depth = node.depth
+            while depth >= 1 && states[depth].num_block_indents > 0
+                debug && @show depth
+                states[depth].num_block_indents = 0
+                depth -= 1
+            end
+        end
+    elseif !prefer_hanging_indent && hanging_indent != -1 && indent_to != left_indent && indent_to != secondary_left_indent && !is_root(opening_node)
+        @s(opening_is_substantial) = true
+        depth = node.depth - 1
+        while depth >= 1 && states[depth].opening_node === states[node.depth].opening_node
+            debug && @show depth
+            states[depth].opening_is_substantial = true
+            states[depth].disable_left_indent = true
+            depth -= 1
+            states[depth + 1].num_block_indents > 0 || break
+        end
     end
     @s(base_indent) = indent_to + base_indent_offset
     @s(num_block_indents) = 0
