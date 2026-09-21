@@ -681,7 +681,7 @@ function is_opening_substantial(node)
     end
     iskind(node′, K"NewlineWs") && return false, !node_is_operator(node)
     iskind(node′, K"begin", K"while", K"for", K"if", K"elseif",
-           K"let", K"try", K"quote") && return false, true
+           K"let", K"try", K"quote", K"do") && return false, true
     iskind(node′, K"call", K"dotcall", K"vect") && return true, true
     return true, true
 end
