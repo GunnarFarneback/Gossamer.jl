@@ -8,3 +8,7 @@ end
 @testset "Formatting rules" begin
     include("format.jl")
 end
+
+@testset "Newline conventions" begin
+    include("newline_conventions.jl")
+end

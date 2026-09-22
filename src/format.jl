@@ -310,13 +310,22 @@ function space_after_comment(node)
         node.text = rstrip(node.text, (' ', '\t'))
     end
     if contains(node.text, "\n")
-        node.text = join((rstrip(line, (' ', '\t'))
+        node.text = join((rstrip_line(line)
                           for line in eachsplit(node.text, '\n')),
                          '\n')
     end
     if node.text != reference_text
         invalidate_column_for_rest_of_row(node)
     end
+end
+
+function rstrip_line(line)
+    suffix = ""
+    if endswith(line, '\r')
+        line = chopsuffix(line, "\r")
+        suffix = "\r"
+    end
+    return rstrip(line, (' ', '\t')) * suffix
 end
 
 function space_before_do(node)

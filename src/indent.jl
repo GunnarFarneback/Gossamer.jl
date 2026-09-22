@@ -442,11 +442,23 @@ function indent_newline_node!(root, node, states, previous_newline_node)
         return
     end
 
+    # Split the NewlineWs text into three parts:
+    # 1. Text before the newline.
+    # 2. Newline character(s), either \n or \r\n.
+    # 3. Text after the newline
+    #
+    # TODO: after_newline is never used but related to exotic_spaces.
+    before_newline, after_newline = split(node.text, "\n", limit = 2)
+    newline_chars = "\n"
+    if endswith(before_newline, "\r")
+        before_newline = chopsuffix(before_newline, "\r")
+        newline_chars = "\r\n"
+    end
+
     # If whitespace only line, strip it down and leave the indentation
     # state unchanged.
     if iskind(move_right(node), K"NewlineWs")
-        before, after = split(node.text, "\n")
-        node.text = lstrip(before, (' ', '\t')) * "\n"
+        node.text = lstrip(before_newline, (' ', '\t')) * newline_chars
         return
     end
 
@@ -629,7 +641,7 @@ function indent_newline_node!(root, node, states, previous_newline_node)
     @s(opening_is_substantial) = false
     @s(colon_node) = root
 
-    node.text = string("\n", " "^indent_to)
+    node.text = string(newline_chars, " "^indent_to)
     node.text *= exotic_spaces
     if node.text != reference_text
         invalidate_column_for_rest_of_row(node)
@@ -643,7 +655,7 @@ function indent_newline_node!(root, node, states, previous_newline_node)
     if !is_root(previous_newline_node) && iskind(move_left(node), K"block") && !is_leaf(move_left(node)) && !iskind(move_left(node).parent, K"module", K"baremodule") && indent_to == indentation_of_node(previous_newline_node)
         prev = move_right(previous_newline_node)
         if !(iskind(prev, K"end", K")", K"]", K"}"))
-            insert_leaf_node!(node.parent, node.index, K"NewlineWs", "\n")
+            insert_leaf_node!(node.parent, node.index, K"NewlineWs", newline_chars)
         end
     end
     #=
@@ -1063,6 +1075,7 @@ function is_first_on_line(node)
     return is_root(node′) || iskind(node′, K"NewlineWs")
 end
 
+# TODO: Revise \n vs \r\n. Do we need the end of tree case?
 function indentation_of_node(node)
     @assert iskind(node, K"NewlineWs")
     if has_attribute(node, :nominal_indent)
@@ -1124,9 +1137,18 @@ end
 #   (e.g. nonbreaking space) is found.
 #   * Tabs found during skipping are converted to space.
 # * Return the remaining space.
+#
+# TODO: Can this be combined with the before_newline, newline_chars,
+#       after_newline split?
 function preprocess_indentation_space!(node)
     reference_text = node.text
     newline_index = findfirst(==('\n'), node.text)
+    if newline_index > 1
+        prev_index = prevind(node.text, newline_index)
+        if node.text[prev_index] == '\r'
+            newline_index = prev_index
+        end
+    end
     node.text = node.text[newline_index:end]
     num_tabs_to_replace = 0
     exotic_spaces = ""
@@ -1134,7 +1156,7 @@ function preprocess_indentation_space!(node)
         c = node.text[index]
         if c == '\t'
             num_tabs_to_replace += 1
-        elseif c != '\n' && c != ' '
+        elseif c != '\n' && c != ' ' && (c != '\r' || index > 1)
             exotic_spaces = node.text[index:end]
             break
         end
