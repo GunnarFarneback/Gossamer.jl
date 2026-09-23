@@ -80,12 +80,12 @@ function move_newlines!(root::Node)
     node = rightmost_leaf(root)
     while !is_root(node)
         parent = node.parent
-        if iskind(node, K"NewlineWs") && !is_root(parent)
-            if is_last_sibling(node)
+        if iskind(node, K"NewlineWs", K"Comment", K"Whitespace") && !is_root(parent)
+            if is_last_sibling(node) && iskind(node, K"NewlineWs")
                 # Newline as last sibling, move it out to parent.
                 move_last_sibling_out_of_node!(node)
                 continue
-            elseif is_first_sibling(node) && iskind(parent, K"call", K"dotcall", K"importpath", K"as", K"=")
+            elseif is_first_sibling(node) && (iskind(parent, K"call", K"dotcall", K"importpath", K"as", K"=") || node_is_operator(parent, false))
                 # Might be multiple newlines to move out, so we may
                 # need to backtrack.
                 next = move_right(node)
@@ -318,7 +318,9 @@ function format_indent!(root::Node)
             elseif iskind(node, K":")
                 @s(colon_node) = node
             elseif iskind(node, K"?")
-                @s(ternary_node) = node
+                if !iskind(move_left(node), K"NewlineWs")
+                    @s(ternary_node) = node
+                end
             elseif iskind(node, K"NewlineWs")
                 indent_newline_node!(root, node, states, previous_newline_node)
                 previous_newline_node = node
@@ -468,12 +470,16 @@ function indent_newline_node!(root, node, states, previous_newline_node)
                                    K"if", K"elseif", K"while"))
     end
 
+    if iskind(node.parent, K"?") && is_root(ternary_node)
+        num_hanging_block_indents += 1
+    end
+
     hanging_indent = -1
     secondary_hanging_indent = -1
     tertiary_hanging_indent = -1
     prefer_hanging_indent = false
     if !is_root(opening_node)
-        debug && @show opening_column num_hanging_block_indents
+        debug && @show opening_column num_hanging_block_indents _string(ternary_node)
         hanging_indent = (opening_column + node_is_operator(opening_node) - 1
                           + 4 * num_hanging_block_indents)
         prefer_hanging_indent = opening_is_substantial
@@ -489,7 +495,7 @@ function indent_newline_node!(root, node, states, previous_newline_node)
                 node′ = move_right(node′)
             end
             ternary_start_column = get_column(node′) - 1
-            if iskind(node.parent, K"?") && node.parent.depth == ternary_node.depth
+            if iskind(move_right(node), K"?") && node.parent === ternary_node.parent
                 # A new ternary inside a ternary.
                 tertiary_hanging_indent = hanging_indent
                 secondary_hanging_indent = ternary_column
@@ -512,11 +518,11 @@ function indent_newline_node!(root, node, states, previous_newline_node)
     elseif !is_root(ternary_node)
         ternary_column = get_column(ternary_node) + 1
         node′ = first(ternary_node.parent.children)
-        if iskind(node′, K"NewlineWs", K"Whitespace", K"Comment")
+        while iskind(node′, K"NewlineWs", K"Whitespace", K"Comment")
             node′ = move_right(node′)
         end
         ternary_start_column = get_column(node′) - 1
-        if iskind(node.parent, K"?") && node.parent.depth == ternary_node.depth
+        if iskind(move_right(node), K"?") && node.parent === ternary_node.parent
             # A new ternary inside a ternary.
             tertiary_hanging_indent = hanging_indent
             secondary_hanging_indent = ternary_column
@@ -529,7 +535,7 @@ function indent_newline_node!(root, node, states, previous_newline_node)
 
         ternary_is_substantial = !iskind(move_right(ternary_node), K"NewlineWs")
         prefer_hanging_indent = ternary_is_substantial
-        num_block_indents += !ternary_is_substantial
+        num_block_indents += !ternary_is_substantial && is_root(colon_node)
     end
 
     # Indentation without consideration of hanging indent.
@@ -597,6 +603,8 @@ function indent_newline_node!(root, node, states, previous_newline_node)
     end
 
     if (indent_to != hanging_indent != -1) && indent_to != secondary_hanging_indent && indent_to != tertiary_hanging_indent
+        # Choosing left indentation although hanging indentation is
+        # preferred. Keep doing that going forward.
         debug && @show "Left indenting, updating state."
         @s(dedent_closing_parenthesis) = true
         if iskind(node.parent, K"parameters")
@@ -613,6 +621,7 @@ function indent_newline_node!(root, node, states, previous_newline_node)
         end
 
         if num_block_indents > 1 && indent_to == secondary_left_indent
+            # Choosing to underindent left indent.
             depth = node.depth
             while depth >= 1 && states[depth].num_block_indents > 0
                 debug && @show depth
@@ -621,6 +630,8 @@ function indent_newline_node!(root, node, states, previous_newline_node)
             end
         end
     elseif !prefer_hanging_indent && hanging_indent != -1 && indent_to != left_indent && indent_to != secondary_left_indent && !is_root(opening_node)
+        # Choosing hanging indent despite not being preferred. Keep
+        # doing that going forward.
         @s(opening_is_substantial) = true
         depth = node.depth - 1
         while depth >= 1 && states[depth].opening_node === states[node.depth].opening_node
@@ -644,6 +655,9 @@ function indent_newline_node!(root, node, states, previous_newline_node)
     @s(opening_is_substantial) = false
     @s(colon_node) = root
 
+    if indent_to < 0
+        @show _string(node)
+    end
     node.text = string(newline_chars, " "^indent_to)
     node.text *= exotic_spaces
     if node.text != reference_text

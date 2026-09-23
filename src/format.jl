@@ -359,8 +359,8 @@ const operator_strings = let
         if !JuliaSyntax.is_error(kind))
 end
 
-function node_is_operator(node)
-    is_leaf(node) || return false
+function node_is_operator(node, require_leaf = true)
+    !require_leaf || is_leaf(node) || return false
     if iskind(node, K"Identifier")
         return node.text in operator_strings
     end

@@ -81,3 +81,11 @@ let x = 1,
 
     f(x + y)
 end
+## A more complicated case.
+let y = if x
+            "no"
+        else
+            ""
+        end
+    y
+end
