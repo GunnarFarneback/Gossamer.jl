@@ -275,8 +275,6 @@ function restructure_if_and_while!(node)
 end
 
 function format_indent!(root::Node)
-    move_newlines!(root)
-
     states = [IndentState(root) for _ in 1:max_tree_depth(root)]
     previous_newline_node = root
 
@@ -538,6 +536,11 @@ function indent_newline_node!(root, node, states, previous_newline_node)
     if conditional_block_indent
         num_block_indents = max(1, num_block_indents)
     end
+
+    if disable_left_indent && hanging_indent == -1
+        disable_left_indent = false
+    end
+
     left_indent = -1
     secondary_left_indent = -1
     if !disable_left_indent

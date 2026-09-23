@@ -8,6 +8,7 @@ function format_node!(node::Node)
     # Catch corner case of empty file.
     isempty(node.children) && return
 
+    move_newlines!(node)
     format_spaces!(node)
     format_indent!(node)
 end
