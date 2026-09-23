@@ -675,6 +675,31 @@ function indent_newline_node!(root, node, states, previous_newline_node)
             insert_leaf_node!(node.parent, node.index, K"NewlineWs", newline_chars)
         end
     end
+
+    # The ternary indentation is more future context sensitive than
+    # other indentation and might get out of sync with preceding
+    # comments. If that is the case, traverse backwards to adjust
+    # those indentations.
+    if !is_root(ternary_node)
+        node′ = move_left(node)
+        while iskind(node′, K"Comment")
+            node′′ = node′
+            node′ = move_left(node′)
+            iskind(node′, K"NewlineWs") || break
+            indentation_of_node(node′) == indent_to && break
+            if !is_not_indented_comment(node′′)
+                exotic_spaces = preprocess_indentation_space!(node′)
+                reference_text = node′.text
+                newline_chars = contains(node′.text, "\r\n") ? "\r\n" : "\n"
+                node′.text = string(newline_chars, " "^indent_to) * exotic_spaces
+                if node′.text != reference_text
+                    invalidate_column_for_rest_of_row(node′)
+                end
+            end
+            node′ = move_left(node′)
+        end
+    end
+
     #=
     # If this newline was preceded by a whitespace only line, now is
     # the time to trim that line.
