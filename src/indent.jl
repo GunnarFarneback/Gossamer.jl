@@ -92,7 +92,7 @@ function move_newlines!(root::Node)
                 move_first_sibling_out_of_node!(node)
                 node = next
                 continue
-            else
+            elseif !is_last_sibling(node)
                 next = move_right(node)
                 if !is_leaf(next) && !is_root(next) && iskind(next, K"block")
                     move_node_into_following_sibling!(node)
@@ -580,6 +580,7 @@ function indent_newline_node!(root, node, states, previous_newline_node)
         elseif in_module
             secondary_left_indent = left_indent
             left_indent -= 4
+            @s(in_module) = false
         end
     end
 

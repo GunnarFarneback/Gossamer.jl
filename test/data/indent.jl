@@ -557,3 +557,17 @@ w)
 f(x, (y,
     z),
     w)
+##
+module T
+function f end
+    ###
+end
+#
+module T
+function f end
+###
+end
+##
+f() do #
+    1
+end == 1
