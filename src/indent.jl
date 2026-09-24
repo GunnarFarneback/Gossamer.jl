@@ -726,9 +726,6 @@ end
 # TODO: Revise \n vs \r\n. Do we need the end of tree case?
 function indentation_of_node(node)
     @assert iskind(node, K"NewlineWs")
-    if has_attribute(node, :nominal_indent)
-        return get_attribute(node, :nominal_indent)
-    end
     node′ = move_right_to_leaf(node)
     # At the very end of the tree this takes us to the root.
     if is_root(node′)
