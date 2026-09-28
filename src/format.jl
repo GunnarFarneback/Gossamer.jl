@@ -184,13 +184,25 @@ function space_around_binary_operator(node)
                 add_space_after = true
             end
         end
-    elseif node.text in ("^", "::", "//")
+    elseif node.text == "::"
         if !space_before || !space_after
             if space_before
                 remove_space_before = true
             end
             if space_after
                 remove_space_after = true
+            end
+        end
+    elseif node.text in ("^", "//")
+        # It's tempting to format `x ^2` to `x^2` rather than `x ^ 2`
+        # but there's a whole can of worms related to `1 .^2`,
+        # `1. ^2` etc.
+        if !space_before || !space_after
+            if !space_before
+                add_space_before = true
+            end
+            if !space_after
+                add_space_after = true
             end
         end
     else
