@@ -339,6 +339,7 @@ function format_indent!(root::Node)
             if !@s(in_incomplete_expression)
                 @s(extra_indent_from_continued_expression) = false
             end
+            @s(ternary_node) = root
 
             if iskind(node.parent, K"block")
                 if true
@@ -479,9 +480,9 @@ function indent_newline_node!(root, node, states, previous_newline_node)
                                             K"NewlineWs")
         elseif !is_root(ternary_node)
             ternary_column = get_column(ternary_node) + 1
-            node′ = first(ternary_node.parent.children)
+            node′ = leftmost_leaf(ternary_node.parent)
             if iskind(node′, K"NewlineWs", K"Whitespace", K"Comment")
-                node′ = move_right(node′)
+                node′ = move_right_to_leaf(node′)
             end
             ternary_start_column = get_column(node′) - 1
             if iskind(move_right(node), K"?") && node.parent === ternary_node.parent
@@ -506,9 +507,9 @@ function indent_newline_node!(root, node, states, previous_newline_node)
         num_block_indents += !colon_is_substantial
     elseif !is_root(ternary_node)
         ternary_column = get_column(ternary_node) + 1
-        node′ = first(ternary_node.parent.children)
+        node′ = leftmost_leaf(ternary_node.parent)
         while iskind(node′, K"NewlineWs", K"Whitespace", K"Comment")
-            node′ = move_right(node′)
+            node′ = move_right_to_leaf(node′)
         end
         ternary_start_column = get_column(node′) - 1
         if iskind(move_right(node), K"?") && node.parent === ternary_node.parent
