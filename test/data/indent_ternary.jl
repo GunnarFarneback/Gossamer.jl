@@ -145,3 +145,23 @@ function f(x)
         # d
         f(x) ? 2 : 1
 end
+##
+f(x -> x isa Integer ? x :
+       x isa Integer ? x :
+                       x, x)
+##
+x ?
+  [f() do
+    g(x)
+   end for x in y] : 0
+#
+x ?
+    [f() do
+         g(x)
+     end for x in y] : 0
+##
+return (x ? 1
+: 2)
+#
+return (x ? 1
+          : 2)
