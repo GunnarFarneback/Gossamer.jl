@@ -79,7 +79,7 @@ function move_newlines!(root::Node)
                 # Newline as last sibling, move it out to parent.
                 move_last_sibling_out_of_node!(node)
                 continue
-            elseif is_first_sibling(node) && (iskind(parent, K"call", K"dotcall", K"importpath", K"as", K"=") || node_is_operator(parent, false))
+            elseif is_first_sibling(node) && (iskind(parent, K"call", K"dotcall", K"importpath", K"as", K"=", K"function") || node_is_operator(parent, false))
                 # Might be multiple newlines to move out, so we may
                 # need to backtrack.
                 next = move_right(node)
