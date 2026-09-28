@@ -53,6 +53,7 @@ function check_file_for_idempotency(filename, index, number_of_files)
 
     format_node!(node)
     out1 = write_node(node)
+    node = parse_string(out1)
     format_node!(node)
     out2 = write_node(node)
 
