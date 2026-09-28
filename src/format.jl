@@ -59,8 +59,7 @@ function space_after_comma(node)
                 # Swap ` ,` to `, `.
                 node.head, prev.head = prev.head, node.head
                 node.text, prev.text = prev.text, node.text
-                node.column_is_current = false
-                prev.column_is_current = false
+                invalidate_column_for_rest_of_row(prev)
             else
                 insert_space!(node.parent, node.index + 1)
             end

@@ -563,7 +563,7 @@ function indent_newline_node!(root, node, states, previous_newline_node)
     end
 
     if !disable_left_indent
-        if dedent_closing_parenthesis && iskind(move_right(node), K")", K"]", K"}")
+        if dedent_closing_parenthesis && iskind(move_right(node), K")", K"]", K"}") && left_indent >= 4
             secondary_left_indent = left_indent
             left_indent -= 4
         elseif in_module
