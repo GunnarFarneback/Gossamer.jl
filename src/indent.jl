@@ -645,9 +645,7 @@ function indent_newline_node!(root, node, states, previous_newline_node)
     @s(opening_is_substantial) = false
     @s(colon_node) = root
 
-    if indent_to < 0
-        @show _string(node)
-    end
+    @assert indent_to >= 0
     node.text = string(newline_chars, " "^indent_to)
     node.text *= exotic_spaces
     if node.text != reference_text
