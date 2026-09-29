@@ -573,8 +573,14 @@ function indent_newline_node!(root, node, states, previous_newline_node)
         end
     end
 
-    # Remove trailing space and convert indenting tabs to spaces.
+    # Remove trailing space and convert indenting tabs to spaces. Move
+    # exotic space into the text of the following leaf node.
     exotic_spaces = preprocess_indentation_space!(node)
+    if !isempty(exotic_spaces)
+        node′ = move_right_to_leaf(node)
+        node′.text = exotic_spaces * node′.text
+        invalidate_column_for_rest_of_row(node′)
+    end
     reference_text = node.text
     old_indent = indentation_of_node(node)
 
@@ -647,7 +653,6 @@ function indent_newline_node!(root, node, states, previous_newline_node)
 
     @assert indent_to >= 0
     node.text = string(newline_chars, " "^indent_to)
-    node.text *= exotic_spaces
     if node.text != reference_text
         invalidate_column_for_rest_of_row(node)
     end
@@ -676,10 +681,9 @@ function indent_newline_node!(root, node, states, previous_newline_node)
             iskind(node′, K"NewlineWs") || break
             indentation_of_node(node′) == indent_to && break
             if !is_not_indented_comment(node′′)
-                exotic_spaces = preprocess_indentation_space!(node′)
                 reference_text = node′.text
                 newline_chars = contains(node′.text, "\r\n") ? "\r\n" : "\n"
-                node′.text = string(newline_chars, " "^indent_to) * exotic_spaces
+                node′.text = string(newline_chars, " "^indent_to)
                 if node′.text != reference_text
                     invalidate_column_for_rest_of_row(node′)
                 end
@@ -802,6 +806,7 @@ function preprocess_indentation_space!(node)
             num_tabs_to_replace += 1
         elseif c != '\n' && c != ' ' && (c != '\r' || index > 1)
             exotic_spaces = node.text[index:end]
+            node.text = node.text[1:prevind(node.text, index)]
             break
         end
     end
