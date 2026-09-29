@@ -490,6 +490,11 @@ function indent_newline_node!(root, node, states, previous_newline_node)
                 tertiary_hanging_indent = hanging_indent
                 secondary_hanging_indent = ternary_column
                 hanging_indent = ternary_start_column
+            elseif iskind(move_right(node), K":") && node.parent === ternary_node.parent
+                # Ternary colon at start of a line
+                tertiary_hanging_indent = hanging_indent
+                secondary_hanging_indent = ternary_start_column
+                hanging_indent = get_column(ternary_node) - 1
             else
                 tertiary_hanging_indent = hanging_indent
                 secondary_hanging_indent = ternary_start_column
@@ -506,6 +511,8 @@ function indent_newline_node!(root, node, states, previous_newline_node)
         prefer_hanging_indent = colon_is_substantial
         num_block_indents += !colon_is_substantial
     elseif !is_root(ternary_node)
+        # TODO: Refactor this with the previous ternary code for
+        # hanging indents.
         ternary_column = get_column(ternary_node) + 1
         node′ = leftmost_leaf(ternary_node.parent)
         while iskind(node′, K"NewlineWs", K"Whitespace", K"Comment")
@@ -517,6 +524,11 @@ function indent_newline_node!(root, node, states, previous_newline_node)
             tertiary_hanging_indent = hanging_indent
             secondary_hanging_indent = ternary_column
             hanging_indent = ternary_start_column
+        elseif iskind(move_right(node), K":") && node.parent === ternary_node.parent
+            # Ternary colon at start of a line
+            tertiary_hanging_indent = hanging_indent
+            secondary_hanging_indent = ternary_start_column
+            hanging_indent = get_column(ternary_node) - 1
         else
             tertiary_hanging_indent = hanging_indent
             secondary_hanging_indent = ternary_start_column
