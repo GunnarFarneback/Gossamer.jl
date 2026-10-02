@@ -7,6 +7,7 @@ mutable struct IndentState
     colon_node::Node
     num_block_indents::Int
     conditional_block_indent::Bool
+    conditionally_cancel_block_indent::Bool
     num_hanging_block_indents::Int
     base_indent::Int
     in_module::Bool
@@ -336,6 +337,7 @@ function format_indent!(root::Node)
             @s(in_module) = false
             @s(disable_left_indent) = false
             @s(dedent_closing_parenthesis) = false
+            @s(conditionally_cancel_block_indent) = false
             if !@s(in_incomplete_expression)
                 @s(extra_indent_from_continued_expression) = false
             end
@@ -450,6 +452,11 @@ function indent_newline_node!(root, node, states, previous_newline_node)
     if iskind(move_right(node), K"NewlineWs")
         node.text = lstrip(before_newline, (' ', '\t')) * newline_chars
         return
+    end
+
+    if @s(conditionally_cancel_block_indent)
+        num_block_indents = 0
+        @s(num_block_indents) = 0
     end
 
     opening_column = -1
@@ -633,7 +640,7 @@ function indent_newline_node!(root, node, states, previous_newline_node)
             depth = node.depth
             while depth >= 1 && states[depth].num_block_indents > 0
                 debug && @show depth
-                states[depth].num_block_indents = 0
+                states[depth].conditionally_cancel_block_indent = true
                 depth -= 1
             end
         end
@@ -649,9 +656,19 @@ function indent_newline_node!(root, node, states, previous_newline_node)
             depth -= 1
             states[depth + 1].num_block_indents > 0 || break
         end
+    elseif hanging_indent == -1 && num_block_indents > 1 && indent_to == secondary_left_indent
+        # Choosing to underindent left indent.
+        # TODO: Refactor with same block above.
+        depth = node.depth
+        while depth >= 1 && states[depth].num_block_indents > 0
+            debug && @show depth
+            states[depth].conditionally_cancel_block_indent = true
+            depth -= 1
+        end
     end
     @s(base_indent) = indent_to + base_indent_offset
     @s(num_block_indents) = 0
+    @s(conditionally_cancel_block_indent) = false
     if @s(conditional_block_indent)
         depth = node.depth
         while depth >= 1 && states[depth].conditional_block_indent
