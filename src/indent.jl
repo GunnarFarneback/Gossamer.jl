@@ -581,6 +581,14 @@ function indent_newline_node!(root, node, states, previous_newline_node)
         base_indent_offset = -4
     end
 
+    if iskind(move_right(node), K"end") && base_indent_offset == 0
+        n, last_end_node = count_ends_on_same_line(node)
+        if n > 1
+            left_indent = max(states[last_end_node.depth].base_indent,
+                              left_indent - (n - 1) * 4)
+        end
+    end
+
     if !disable_left_indent
         if dedent_closing_parenthesis && iskind(move_right(node), K")", K"]", K"}") && left_indent >= 4
             secondary_left_indent = left_indent
@@ -806,6 +814,22 @@ function is_next_line_not_indented(node)
         node′ = move_right(node′)
     end
     return true
+end
+
+function count_ends_on_same_line(node)
+    n = 0
+    last_end_node = node
+    while true
+        node = move_right(node)
+        if iskind(node, K"end")
+            last_end_node = node
+            n += 1
+        elseif !iskind(node, K"Whitespace", K"Comment")
+            break
+        end
+    end
+    @assert iskind(last_end_node, K"end")
+    return n, last_end_node
 end
 
 # * Remove all space before newline, i.e. trailing space, and update

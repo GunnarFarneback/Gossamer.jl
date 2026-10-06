@@ -52,6 +52,12 @@ begin
         begin
 end end end
 ##
+begin
+    begin begin
+        1
+    end end
+end
+##
 y =
     x[zz{
         w
