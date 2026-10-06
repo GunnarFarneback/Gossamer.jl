@@ -38,3 +38,35 @@ x = f((x
        for x in x
        if true),
       init = 0)
+##
+begin
+    sum(sum(sum(x
+                for x in  X)
+            for y in Y)
+        for z in Z
+        )
+end
+##
+begin
+sumsum(sumsum(sumsum(x
+for x in  X)
+for y in Y)
+for z in Z
+)
+end
+#
+begin
+    sumsum(sumsum(sumsum(x
+                         for x in  X)
+                  for y in Y)
+           for z in Z
+           )
+end
+##
+begin
+    sumsum(sumsum(sumsum(x
+                for x in  X)
+            for y in Y)
+        for z in Z
+    )
+end
