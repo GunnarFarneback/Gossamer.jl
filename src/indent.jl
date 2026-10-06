@@ -455,8 +455,12 @@ function indent_newline_node!(root, node, states, previous_newline_node)
     end
 
     if @s(conditionally_cancel_block_indent)
-        num_block_indents = 0
-        @s(num_block_indents) = 0
+        if iskind(node.parent, K"call", K"ref") && !iskind(move_right_to_leaf(node), K"end", K")", K"]", K"}")
+            num_block_indents = min(num_block_indents, 1)
+        else
+            num_block_indents = 0
+        end
+        @s(num_block_indents) = num_block_indents
     end
 
     opening_column = -1

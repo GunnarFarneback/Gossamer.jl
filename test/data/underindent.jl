@@ -84,3 +84,9 @@ end, 1, g() do x
         1
     end
 end, 2)
+##
+function f()
+    y = g(x => begin
+        x
+    end for z in Z)
+end
