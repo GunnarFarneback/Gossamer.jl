@@ -70,3 +70,37 @@ begin
         for z in Z
     )
 end
+##
+y = f(x for
+      x in X)
+##
+y = f(
+    x for
+    x in X)
+##
+y = f(
+    x for
+     x in X)
+#
+y = f(
+    x for
+        x in X)
+##
+y = f(x for
+      x in X if
+      true)
+##
+y = f(
+    x for
+    x in X if
+    true)
+##
+y = f(
+    x for
+     x in X if
+    true)
+#
+y = f(
+    x for
+        x in X if
+        true)

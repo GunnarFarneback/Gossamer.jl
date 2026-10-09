@@ -359,15 +359,15 @@ function format_indent!(root::Node)
                     @s(opening_is_substantial) = true
                 end
             elseif iskind(node.parent, K"iteration")
-                if iskind(node.parent.parent, K"for", K"generator") && iskind(move_left(node.parent), K"for")
+                if iskind(node.parent.parent, K"for", K"generator") && iskind(move_left_to_leaf(node.parent), K"for")
                     debug && println("Found for opening ", _string(node.parent.parent), " at depth ", node.depth)
-                    @s(opening_node) = move_left(node.parent)
+                    @s(opening_node) = move_left_to_leaf(node.parent)
                     @s(num_hanging_block_indents) = 0
                     @s(num_block_indents) += 1
                     @s(opening_is_substantial) = true
-                elseif iskind(node.parent.parent, K"filter") && iskind(move_left(node.parent.parent), K"for")
+                elseif iskind(node.parent.parent, K"filter") && iskind(move_left_to_leaf(node.parent.parent), K"for")
                     debug && println("Found for opening ", _string(node.parent.parent), " at depth ", node.depth)
-                    @s(opening_node) = move_left(node.parent.parent)
+                    @s(opening_node) = move_left_to_leaf(node.parent.parent)
                     @s(num_hanging_block_indents) = 0
                     @s(num_block_indents) += 1
                     @s(opening_is_substantial) = true
@@ -461,6 +461,12 @@ function indent_newline_node!(root, node, states, previous_newline_node)
             num_block_indents = 0
         end
         @s(num_block_indents) = num_block_indents
+    end
+
+    if iskind(node.parent, K"iteration") && iskind(node.parent.parent, K"generator", K"filter") && move_left_to_leaf(node) === opening_node
+        opening_node = states[move_left_to_leaf(node).parent.depth].opening_node
+        num_block_indents -= 1
+        @s(in_incomplete_expression) = true
     end
 
     opening_column = -1
