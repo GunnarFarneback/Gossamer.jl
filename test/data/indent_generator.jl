@@ -97,13 +97,23 @@ y = f(
 ##
 y = f(
     x for
+    x in X if
+     true)
+#
+y = f(
+    x for
+    x in X if
+        true)
+##
+y = f(
+    x for
      x in X if
     true)
 #
 y = f(
     x for
         x in X if
-        true)
+            true)
 ##
 y = f(
     x for
@@ -113,4 +123,12 @@ y = f(
 y = f(
     x for
         x in X
-        if true)
+    if true)
+##
+y = f(x for
+          x in X if
+        true)
+#
+y = f(x for
+          x in X if
+              true)
