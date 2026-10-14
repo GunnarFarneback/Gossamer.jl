@@ -90,3 +90,14 @@ function f()
         x
     end for z in Z)
 end
+##
+function f(x)
+    quote
+        let c = g(x) do y
+            h(y)
+        end
+        function i(x)
+        end
+        end
+    end
+end

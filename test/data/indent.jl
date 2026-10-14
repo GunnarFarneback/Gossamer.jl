@@ -559,3 +559,21 @@ end
 f() do #
     1
 end == 1
+##
+f(x) =
+gggggggggg(hhhhhhhhhhhhh(
+x
+))
+#
+f(x) =
+    gggggggggg(hhhhhhhhhhhhh(
+            x
+        ))
+##
+f(x) =
+gggggggggg(hhhhhhhhhhhhh(
+))
+#
+f(x) =
+    gggggggggg(hhhhhhhhhhhhh(
+        ))
