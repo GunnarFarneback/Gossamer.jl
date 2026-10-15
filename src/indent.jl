@@ -342,6 +342,9 @@ function format_indent!(root::Node)
                 @s(extra_indent_from_continued_expression) = false
             end
             @s(ternary_node) = root
+            if iskind(node, K"try")
+                @s(conditional_block_indent) = false
+            end
 
             if iskind(node.parent, K"block")
                 if true
