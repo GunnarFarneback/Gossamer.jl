@@ -560,6 +560,12 @@ function indent_newline_node!(root, node, states, previous_newline_node)
         num_block_indents += !ternary_is_substantial && is_root(colon_node)
     end
 
+    # Don't bother checking that brackets match; it would be a
+    # syntactical error if they didn't.
+    if move_left(node) === opening_node && iskind(opening_node, K"(", K"[", K"{") && iskind(move_right(node), K")", K"]", K"}") && num_block_indents >= 1
+        num_block_indents -= 1
+    end
+
     # Indentation without consideration of hanging indent.
     if conditional_block_indent || (iskind(node.parent, K"function") && iskind(move_left(node), K"="))
         num_block_indents = max(1, num_block_indents)

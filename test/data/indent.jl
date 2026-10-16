@@ -577,3 +577,15 @@ gggggggggg(hhhhhhhhhhhhh(
 f(x) =
     gggggggggg(hhhhhhhhhhhhh(
         ))
+##
+f(
+)
+##
+[
+]
+##
+(
+)
+##
+Tuple{
+}
