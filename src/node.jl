@@ -99,6 +99,15 @@ get_attribute(node::Node, attr::Symbol) = node.attributes[attr]
 get_attribute(node::Node, attr::Symbol, default) =
     get(node.attributes, attr, default)
 
+# is node1 an ancestor of node2?
+function is_ancestor_of(node1::Node, node2::Node)
+    while node2.parent !== node2
+        node2 = node2.parent
+        node2 === node1 && return true
+    end
+    return false
+end
+
 function green_to_node(green::GreenNode, raw::AbstractString, pos::Int = 1,
                        row::Int = 1, column::Int = 1, sibling_index::Int = 1,
                        parent::Union{Nothing, Node} = nothing)

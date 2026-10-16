@@ -627,6 +627,16 @@ function indent_newline_node!(root, node, states, previous_newline_node)
         prefer_hanging_indent = false
     end
 
+    # This is likewise kind of overspecialized.
+    if is_first_sibling(node) && iskind(node.parent, K"block") && iskind(node.parent.parent, K"let") && !iskind(move_left(node.parent), K"let") && !is_root(previous_newline_node)
+        prev_indent = indentation_of_node(previous_newline_node)
+        if prev_indent < left_indent && is_ancestor_of(node.parent.parent, move_right(previous_newline_node))
+#            secondary_left_indent = left_indent
+#            left_indent = prev_indent
+            secondary_left_indent = prev_indent
+        end
+    end
+
     # Remove trailing space and convert indenting tabs to spaces. Move
     # exotic space into the text of the following leaf node.
     exotic_spaces = preprocess_indentation_space!(node)

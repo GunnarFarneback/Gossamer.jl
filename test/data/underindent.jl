@@ -101,3 +101,15 @@ function f(x)
         end
     end
 end
+##
+@test f() do x
+x
+end ≈ let
+x
+end
+#
+@test f() do x
+    x
+end ≈ let
+    x
+end
