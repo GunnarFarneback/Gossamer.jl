@@ -15,17 +15,28 @@ end
 
 function format_spaces!(node::Node)
     node = move_right(node)
+    inhibit = false
+    inhibit_next = false
+    inhibit_depth = 0
     while !is_root(node)
         if inhibit_node_recursion(node)
             node = move_right_no_descent(node)
-            continue
+        else
+            if !inhibit
+                space_after_comma(node)
+                inhibit_next = space_around_binary_operator(node)
+            end
+            space_after_comment(node)
+            space_before_do(node)
+            node = move_right(node)
         end
-        propagate_inline_space_inhibition(node)
-        space_after_comma(node)
-        space_around_binary_operator(node)
-        space_after_comment(node)
-        space_before_do(node)
-        node = move_right(node)
+        if inhibit_next
+            inhibit_depth = node.depth
+            inhibit_next = false
+            inhibit = true
+        elseif node.depth <= inhibit_depth
+            inhibit = false
+        end
     end
     return
 end
@@ -42,15 +53,7 @@ function is_colon_call(node)
                for child in node.children)
 end
 
-function propagate_inline_space_inhibition(node)
-    has_attribute(node, :inhibit_inline_space_formatting) || return
-    for child in node.children
-        add_attribute!(child, :inhibit_inline_space_formatting)
-    end
-end
-
 function space_after_comma(node)
-    has_attribute(node, :inhibit_inline_space_formatting) && return
     prev = move_left_to_leaf(node)
     next = move_right_to_leaf(node)
     if iskind(node, K",", K";")
@@ -71,11 +74,10 @@ end
 function space_around_binary_operator(node)
     parent = node.parent
     index = node.index
-    index == 1 && return
-    has_attribute(node, :inhibit_inline_space_formatting) && return
+    index == 1 && return false
     # Only consider operator nodes.
-    node_is_operator(node) || return
-    iskind(node, K".") && return
+    node_is_operator(node) || return false
+    iskind(node, K".") && return false
 
     space_before = false
     space_node_before = nothing
@@ -97,7 +99,7 @@ function space_around_binary_operator(node)
         end
     end
 
-    op_before && return
+    op_before && return false
 
     space_after = false
     space_node_after = nothing
@@ -131,25 +133,25 @@ function space_around_binary_operator(node)
         end
     end
 
-    (nonspace_before && nonspace_after) || return
-    (comma_after || closing_after) && return
+    (nonspace_before && nonspace_after) || return false
+    (comma_after || closing_after) && return false
     # Process .op when we get to op.
-    iskind(node, K".") && op_after && return
+    iskind(node, K".") && op_after && return false
 
-    node.text in ("^", "::", "//", "<:") && !space_before && !space_after && return
+    node.text in ("^", "::", "//", "<:") && !space_before && !space_after && return false
 
     if node.text == "::" && space_before && !space_after
         # Accept this inside struct definitions. It occurs in the
         # wild.
         if iskind(node.parent, K"::") && iskind(node.parent.parent, K"block") && iskind(node.parent.parent.parent, K"struct")
-            return
+            return false
         end
     end
 
     # Accept division without space if both arguments are literals.
     if node.text == "/" && !space_before && !space_after
         if is_literal(move_left(node)) && is_literal(move_right(node))
-            return
+            return false
         end
     end
 
@@ -158,8 +160,7 @@ function space_around_binary_operator(node)
         && iskind(node.parent.parent, K"call", K"dotcall", K"parameters", K"macrocall", K"tuple")
         && !space_before && !space_after)
 
-        add_attribute!(move_right(node), :inhibit_inline_space_formatting)
-        return
+        return true
     end
 
     add_space_before = false
@@ -227,7 +228,7 @@ function space_around_binary_operator(node)
         remove_space!(space_node_before)
     end
 
-    return
+    return false
 end
 
 function space_after_comment(node)

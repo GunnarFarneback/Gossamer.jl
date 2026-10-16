@@ -28,8 +28,6 @@ mutable struct Node
     # Head of corresponding GreenNode.
     # TODO: Change to Kind?
     head::SyntaxHead
-    # Formatting metadata, used as needed for bookkeeping.
-    attributes::Dict{Symbol, Any}
     # Root node points to itself.
     parent::Node
 
@@ -37,12 +35,11 @@ mutable struct Node
                   text::Union{String, SubString{String}}, head::SyntaxHead,
                   parent::Union{Nothing, Node})
         if isnothing(parent)
-            node = new(children, true, 0, index, row, column, true, text, head,
-                       Dict{Symbol, Any}())
+            node = new(children, true, 0, index, row, column, true, text, head)
             node.parent = node
         else
             node = new(children, true, parent.depth + 1, index, row, column,
-                       true, text, head, Dict{Symbol, Any}(), parent)
+                       true, text, head, parent)
         end
         return node
     end
@@ -89,15 +86,6 @@ is_whitespace(node) = iskind(node, K"Whitespace", K"NewlineWs")
 is_literal(node) = JuliaSyntax.is_literal(kind(node))
 is_first_sibling(node) = first(node.parent.children) === node
 is_last_sibling(node) = last(node.parent.children) === node
-add_attribute!(node::Node, attr::Symbol) = set_attribute!(node, attr, true)
-has_attribute(node::Node, attr::Symbol) = haskey(node.attributes, attr)
-has_attribute(::Nothing, ::Symbol) = false
-function set_attribute!(node::Node, attr::Symbol, value)
-    node.attributes[attr] = value
-end
-get_attribute(node::Node, attr::Symbol) = node.attributes[attr]
-get_attribute(node::Node, attr::Symbol, default) =
-    get(node.attributes, attr, default)
 
 # is node1 an ancestor of node2?
 function is_ancestor_of(node1::Node, node2::Node)
