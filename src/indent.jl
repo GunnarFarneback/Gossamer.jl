@@ -25,8 +25,6 @@ mutable struct IndentState
             type = fieldtype(IndentState, i)
             if type === Node
                 setfield!(state, name, root)
-            elseif type <: Vector
-                setfield!(state, name, type())
             else
                 setfield!(state, name, zero(type))
             end
@@ -35,20 +33,21 @@ mutable struct IndentState
     end
 end
 
-# TODO: Once the code is sufficiently stable, replace this with a
-# direct copy of the actual fields.
 function copy_state!(to::IndentState, from::IndentState)
-    for i in 1:fieldcount(IndentState)
-        name = fieldname(IndentState, i)
-        type = fieldtype(IndentState, i)
-        if type <: Vector
-            #value = getfield(from, name)
-            #resize!(getfield(to, name), length(value)) .= value
-            empty!(getfield(to, name))
-        else
-            setfield!(to, name, getfield(from, name))
-        end
-    end
+    to.opening_node = from.opening_node
+    to.opening_is_substantial = from.opening_is_substantial
+    to.ternary_node = from.ternary_node
+    to.colon_node = from.colon_node
+    to.num_block_indents = from.num_block_indents
+    to.conditional_block_indent = from.conditional_block_indent
+    to.conditionally_cancel_block_indent = from.conditionally_cancel_block_indent
+    to.num_hanging_block_indents = from.num_hanging_block_indents
+    to.base_indent = from.base_indent
+    to.in_module = from.in_module
+    to.dedent_closing_parenthesis = from.dedent_closing_parenthesis
+    to.in_incomplete_expression = from.in_incomplete_expression
+    to.extra_indent_from_continued_expression = from.extra_indent_from_continued_expression
+    to.disable_left_indent = from.disable_left_indent
 end
 
 # TODO: Once the code is sufficiently stable, replace the macro with
