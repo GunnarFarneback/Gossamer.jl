@@ -96,35 +96,50 @@ function is_ancestor_of(node1::Node, node2::Node)
     return false
 end
 
-function green_to_node(green::GreenNode, raw::AbstractString, pos::Int = 1,
-                       row::Int = 1, column::Int = 1, sibling_index::Int = 1,
-                       parent::Union{Nothing, Node} = nothing)
-    children = Node[]
-    node = Node(children, sibling_index, row, column, "", green.head, parent)
-    if !isnothing(green.children)
-        for (i, green_child) in enumerate(green.children)
-            child, row, column = green_to_node(green_child, raw, pos,
-                                               row, column, i, node)
-            push!(children, child)
-            pos += green_child.span
-        end
-        node.is_leaf = isempty(children)
-    else
-        text = raw[pos:prevind(raw, pos + green.span)]
-        node.text = text
-        if contains(text, "\n")
-            row += count(==('\n'), text)
-            column = 1 + length(last(rsplit(text, "\n", limit = 2)))
+function green_to_node(green::GreenNode, raw::AbstractString)
+    pos, row, column = 1, 1, 1
+    root = Node(Node[], 1, row, column, "", green.head, nothing)
+    stack = [green]
+    node = root
+    while !isempty(stack)
+        if isnothing(green.children)
+            #text = raw[pos:prevind(raw, pos + green.span)]
+            text = unsafe_string(pointer(raw, pos), green.span)
+            pos += green.span
+            node.text = text
+            if contains(text, "\n")
+                row += count(==('\n'), text)
+                column = 1 + length(last(rsplit(text, "\n", limit = 2)))
+            else
+                column += length(text)
+            end
         else
-            column += length(text)
+            i = length(node.children) + 1
+            if i <= length(green.children)
+                green_child = green.children[i]
+                grandchildren = Node[]
+                if !isnothing(green_child.children)
+                    sizehint!(grandchildren, length(green_child.children))
+                end
+                child = Node(grandchildren, i, row, column, "", green_child.head, node)
+                push!(node.children, child)
+                node = child
+                push!(stack, green)
+                green = green_child
+                continue
+            end
         end
+        green = pop!(stack)
+        node = node.parent
+        node.is_leaf = false
     end
-    return node, row, column
+
+    return root
 end
 
 function parse_string(raw)
     green = parseall(GreenNode, raw; filename = "", ignore_warnings = true)
-    node, _, _ = green_to_node(green, raw)
+    node = green_to_node(green, raw)
     return node
 end
 
