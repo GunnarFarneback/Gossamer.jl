@@ -294,7 +294,7 @@ function format_indent!(root::Node)
         if !is_leaf(node)
         else
             if iskind(node, K"(", K"[", K"{", K"=", K"import", K"using",
-                      K"export", K"public", K"return")
+                      K"export", K"public", K"return", K"MacroName")
                 debug && println("Found opening ", _string(node), " at depth ", node.depth)
                 @s(opening_node) = node
                 @s(num_hanging_block_indents) = 0
@@ -476,7 +476,7 @@ function indent_newline_node!(root, node, states, previous_newline_node)
         opening_column = (get_column(opening_node) + length(opening_node.text)
                           + iskind(opening_node, K"let", K"import", K"using",
                                    K"export", K"public", K"return", K"for",
-                                   K"if", K"elseif", K"while"))
+                                   K"if", K"elseif", K"while", K"MacroName"))
     end
 
     if iskind(node.parent, K"?") && is_root(ternary_node)
@@ -776,6 +776,7 @@ end
 # immediately followed by a newline. For assignments certain operators
 # also count as insubstantial.
 function is_opening_substantial(node)
+    iskind(node, K"MacroName") && return false, false
     node′ = move_right_to_leaf(node)
     if iskind(node′, K"Whitespace")
         node′ = move_right(node′)
