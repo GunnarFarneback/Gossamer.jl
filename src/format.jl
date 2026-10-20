@@ -157,7 +157,7 @@ function space_around_binary_operator(node)
 
     next = move_right(node)
     if (iskind(node, K"=") && iskind(node.parent, K"=")
-        && iskind(node.parent.parent, K"call", K"dotcall", K"parameters", K"macrocall", K"tuple")
+        && iskind(node.parent.parent, K"call", K"dotcall", K"parameters", K"macrocall", K"tuple", K"ref")
         && !space_before && !space_after)
 
         return true
