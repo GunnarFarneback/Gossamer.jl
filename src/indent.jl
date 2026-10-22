@@ -576,7 +576,7 @@ function indent_newline_node!(root, node, states, previous_newline_node)
 
     left_indent = -1
     secondary_left_indent = -1
-    if !disable_left_indent
+    if !disable_left_indent || !prefer_hanging_indent
         left_indent = base_indent + 4 * num_block_indents
         if num_block_indents > 1
             secondary_left_indent = base_indent + 4

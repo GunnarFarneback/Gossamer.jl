@@ -589,3 +589,7 @@ f(
 ##
 Tuple{
 }
+##
+@inline f(x::T) where
+        {T<:AbstractFloat} =
+    g()
