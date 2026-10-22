@@ -1,19 +1,3 @@
-for x in X
-x
-end
-#
-for x in X
-    x
-end
-##
-if x
-      y
-end
-#
-if x
-    y
-end
-##
 function gazonk(x,
       y)
     return x
@@ -58,147 +42,6 @@ gazonk(
     x,
     y
     ) = x
-##
-if x
-1
-else
-3
-end
-#
-if x
-    1
-else
-    3
-end
-##
-if x
-1
-elseif y
-2
-else
-3
-end
-#
-if x
-    1
-elseif y
-    2
-else
-    3
-end
-## Accept modules both with and without indentation.
-module M
-    x
-end
-##
-module M
-x
-end
-##
-f() do
-x
-end
-#
-f() do
-    x
-end
-##
-f() do x
-x
-end
-#
-f() do x
-    x
-end
-##
-xxxxxx =
-    f() do y
-        z
-    end
-##
-xxxxxx +=
-    f() do y
-        z
-    end
-##
-let x = 1
-x
-end
-#
-let x = 1
-    x
-end
-##
-z = let x = 1,
-y = 2
-x
-end
-#
-z = let x = 1,
-        y = 2
-    x
-end
-## Also accept
-z = let x = 1,
-        y = 2
-
-        x
-    end
-## and with extra first line comment:
-z = let x = 1,
-        y = 2
-
-# comment
-        x
-    end
-##
-let
-x = 1
-x
-end
-#
-let
-    x = 1
-    x
-end
-##
-import x,
-       y
-##
-import x,
-    y
-##
-import x: y,
-          z
-##
-import x: y,
-       z
-##
-import x: y,
-    z
-##
-import x:
-    y,
-    z
-##
-using x,
-      y
-##
-using x,
-    y
-##
-using x: y,
-         z
-##
-using x: y,
-      z
-##
-using x: y,
-    z
-##
-using x:
-    y,
-    z
 ##
 export x,
        y
@@ -285,18 +128,6 @@ function f(x)
     x
 end
 ##
-if true
-    begin
-        x
-    end
-end
-##
-if true
-    let x = x
-        x
-    end
-end
-##
 @generated function
     f(x)
 
@@ -314,41 +145,12 @@ return esc(quote
            end)
 ##
 return esc(quote
-    :x
+               :x
 end)
-##
-for x in 1:2,
-    y in 3:4
-    f(x + y)
-end
 #
-for x in 1:2,
-    y in 3:4
-
-    f(x + y)
-end
-##
-let x = 1,
-    y = 3
-    f(x + y)
-end
-#
-let x = 1,
-    y = 3
-
-    f(x + y)
-end
-##
-if true && false &&
-    true
-    false
-end
-#
-if true && false &&
-    true
-
-    false
-end
+return esc(quote
+               :x
+           end)
 ##
 @testset "" begin
     @test f(x,
@@ -368,18 +170,6 @@ end
         z
 end
 ##
-yyy = x ? 1 :
-          2
-##
-yyy = x ? 1 :
-      2
-##
-yyy = x ? 1 :
-    2
-##
-xx ? x :
-     x
-##
 xxxxxxxxxxxxx =
     yyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy =
     zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz =
@@ -394,40 +184,6 @@ xxxxxxxxxxxxx =
 #
 
 1
-##
-if true for x in X
-        x
-    end
-end
-##
-true && for x in X
-    x
-end
-##
-true &&
-    for x in X
-        x
-    end
-##
-true && (for x in X
-             x
-         end)
-##
-true && (
-    for x in X
-        x
-    end)
-##
-true && (for x in X
-             x
-         end
-         )
-##
-true && (
-    for x in X
-        x
-    end
-)
 ##
 if true
 if true
@@ -485,92 +241,6 @@ f(g) = g * g'
 ##
 x = ' '
 y
-##
-f() do
-    g(x,
-      y)
-end
-##
-begin
-    for h in H,
-        w in W
-    end
-end
-##
-for x in X,
-y in Y
-end
-#
-for x in X,
-    y in Y
-end
-##
-Dict(x
-     for x in X)
-##
-Dict(x
-     for x in X
-     if true)
-##
-Dict(x
-     for x in X,
-         y in Y)
-##
-Dict(x
-     for x in X,
-         y in Y
-     if true)
-##
-yy = Dict(x
-          for x in X)
-##
-yy = Dict(x
-          for x in X
-          if true)
-##
-yy = Dict(x
-          for x in X,
-              y in Y)
-##
-yy = Dict(x
-          for x in X,
-              y in Y
-          if true)
-##
-if true &&
-!false
-x
-end
-#
-if true &&
-    !false
-
-    x
-end
-##
-yyy = f() do x
-    x
-
-    x
-end
-##
-yyy = f() do x
-    g(x)
-
-    x
-end
-## Remove trailing space regardless whether indentation changes.
-if false 
-0
-else 
-    1
-end
-#
-if false
-    0
-else
-    1
-end
 ## Always eliminate TAB indentation.
 begin
 				1
@@ -643,20 +313,17 @@ y = (x
 y = (x
      + a * x
      + x)
-##
-if a ||
-(c &&
-(d || e))
+## Remove trailing space regardless whether indentation changes.
+if false 
+0
+else 
+    1
 end
 #
-if a ||
-    (c &&
-     (d || e))
-end
-##
-fffffff(x,
-        y) do z
-    z
+if false
+    0
+else
+    1
 end
 ## There's a trailing space after the `y`.
 if x ||
@@ -710,59 +377,6 @@ for x in begin
     end
 end
 ##
-function g()
-    if x
-    elseif y && f() do x
-            return x
-        end
-    end
-end
-## Can skip empty line after `end` and closing brackets.
-if begin
-        x &&
-            y
-    end
-    z
-end
-##
-if (
-    x &&
-    y
-    )
-    z
-end
-##
-for x in [
-    1
-    ]
-    x
-end
-##
-for x in X
-    if x && (
-           x == x ||
-                x
-)
-    end
-end
-#
-for x in X
-    if x && (
-        x == x ||
-            x
-    )
-    end
-end
-##
-x = f((x
-       for x in x),
-      init = 0)
-##
-x = f((x
-       for x in x
-       if true),
-      init = 0)
-##
 macro m(x)
 esc(x)
 end
@@ -787,6 +401,14 @@ b = 2)
 fffffff(; a = 1,
         b = 2)
 ##
+y = (
+x
+)
+#
+y = (
+    x
+)
+##
 y = (;
 x
 )
@@ -794,84 +416,6 @@ x
 y = (;
     x
 )
-##
-function f()
-    yy =
-        x ? x :
-        #
-        x ? x :
-
-        x ? x : y
-end
-##
-function f1()
-    yy =
-        x ? x :
-        #
-        x ? x :
-         x ? x : y
-end
-#
-function f1()
-    yy =
-        x ? x :
-        #
-        x ? x :
-            x ? x : y
-end
-##
-function f2()
-    yy =
-        x ? x :
-        #
-        x ? x :
-###
-         x ? x : y
-end
-#
-function f2()
-    yy =
-        x ? x :
-        #
-        x ? x :
-###
-            x ? x : y
-end
-##
-function f3()
-    yy =
-        x ? x :
-        #
-        x ? x :
- #=
- =#
-         x ? x : y
-end
-#
-function f3()
-    yy =
-        x ? x :
-        #
-        x ? x :
- #=
- =#
-            x ? x : y
-end
-##
-if (x
-    || x)
-    if x
-        x
-    end
-end
-#
-if (x
-    || x)
-
-    if x
-        x
-    end
-end
 ##
 function f(x)
     # x
@@ -913,50 +457,135 @@ f(x,
   y) = g(x,
          x)
 ##
-function f()
 if true
-    g() do
-        yyy = h() do
-           x()
-         end
-        return y
-    end
-end
+x = [
+    1:2,
+    3:4
+]
 end
 #
-function f()
-    if true
-        g() do
-            yyy = h() do
-                x()
-            end
-            return y
-        end
-    end
+if true
+    x = [
+        1:2,
+        3:4
+    ]
 end
 ##
-function f()
-  x = if y
-    z
-  else
-    z
-  end
-end
+"""
+Read the tutorial at $(abspath(dirname(@__DIR__), "test",
+"tutorial.jl")) or
+"""
+##
+ccccccccxxxxx = f(x, ggggg(
+ccccccccccccccccccccccccccccccccccccccccccccccccccccx,
+                           ccccccccccccccccccccccccccccccccccccccccccccccccccccx,
+ccccccccccccccccccccccccccccccccccccccccccccccccccccy
+),
+x
+)
 #
-function f()
-    x = if y
-        z
-    else
-        z
-    end
-end
+ccccccccxxxxx = f(x, ggggg(
+        ccccccccccccccccccccccccccccccccccccccccccccccccccccx,
+        ccccccccccccccccccccccccccccccccccccccccccccccccccccx,
+        ccccccccccccccccccccccccccccccccccccccccccccccccccccy
+    ),
+    x
+)
 ##
-function parse(::Type{Float64}, s::AbstractString, r::RoundingMode)
-    a = setprecision(BigFloat, 53) do
-            setrounding(BigFloat, r) do
-                parse(BigFloat, s)
-            end
-        end
+ccccccccxxxxx = f(x, ggggg(x,
+ccccccccccccccccccccccccccccccccccccccccccccccccccccx,
+                           ccccccccccccccccccccccccccccccccccccccccccccccccccccx,
+ccccccccccccccccccccccccccccccccccccccccccccccccccccy
+),
+x
+)
+#
+ccccccccxxxxx = f(x, ggggg(x,
+                           ccccccccccccccccccccccccccccccccccccccccccccccccccccx,
+                           ccccccccccccccccccccccccccccccccccccccccccccccccccccx,
+                           ccccccccccccccccccccccccccccccccccccccccccccccccccccy
+                           ),
+                  x
+                  )
+## If the choice was not to indent the continued expression on the
+## first continuation line, prefer staying with that decision.
+x = x &&
+    x &&
+x
+#
+x = x &&
+    x &&
+    x
+## No switching back to not indenting.
+x = x &&
+        x &&
+    x
+#
+x = x &&
+        x &&
+        x
+##
+x = Dict(3 => 1,
 
-    return Float64(a, r)
+         4 => 2)
+## Don't get confused by first line leading space.
+        f(x,
+y)
+#
+f(x,
+  y)
+##
+if x*x &&
+     !y
+    1
 end
+#
+if x * x &&
+    !y
+
+    1
+end
+##
+module T
+function f end
+    ###
+end
+#
+module T
+function f end
+###
+end
+##
+f() do #
+    1
+end == 1
+##
+f(x) =
+gggggggggg(hhhhhhhhhhhhh(
+x
+))
+#
+f(x) =
+    gggggggggg(hhhhhhhhhhhhh(
+            x
+        ))
+##
+f(x) =
+gggggggggg(hhhhhhhhhhhhh(
+))
+#
+f(x) =
+    gggggggggg(hhhhhhhhhhhhh(
+        ))
+##
+f(
+)
+##
+[
+]
+##
+(
+)
+##
+Tuple{
+}

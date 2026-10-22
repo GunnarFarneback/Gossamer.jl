@@ -53,3 +53,15 @@ f(; a=2*c)
 (; a=2*c)
 ##
 @f a=2*c
+## Indexing is really just a function call in disguise.
+f[x, a=b]
+##
+f[x, a = b]
+##
+f[x, a= b]
+#
+f[x, a = b]
+##
+f[x, a =b]
+#
+f[x, a = b]

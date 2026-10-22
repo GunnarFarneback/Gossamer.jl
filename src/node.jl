@@ -5,6 +5,8 @@ mutable struct Node
     children::Vector{Node}
     # Cached value of isempty(children), for faster lookup.
     is_leaf::Bool
+    # Depth within tree. Root node is at depth 0.
+    depth::Int
     # Sibling index. Unless `node` is the root node, it must always
     # hold that `node === node.parent[node.index]`.
     index::Int
@@ -26,48 +28,54 @@ mutable struct Node
     # Head of corresponding GreenNode.
     # TODO: Change to Kind?
     head::SyntaxHead
-    # Formatting metadata, used as needed for bookkeeping.
-    attributes::Dict{Symbol, Any}
     # Root node points to itself.
     parent::Node
 
-    # Nodes are always created with `parent` pointing to itself
     function Node(children::Vector{Node}, index::Int, row::Int, column::Int,
                   text::Union{String, SubString{String}}, head::SyntaxHead,
                   parent::Union{Nothing, Node})
         if isnothing(parent)
-            node = new(children, true, index, row, column, true, text, head,
-                       Dict{Symbol, Any}())
+            node = new(children, true, 0, index, row, column, true, text, head)
             node.parent = node
         else
-            node = new(children, true, index, row, column, true, text, head,
-                       Dict{Symbol, Any}(), parent)
+            node = new(children, true, parent.depth + 1, index, row, column,
+                       true, text, head, parent)
         end
         return node
     end
 end
 
 function Base.show(io::IO, node::Node)
-    print_node(io, node, 0)
+    print_node(io, node)
 end
 
-function print_node(io::IO, node::Node, indent)
+# TODO: Traverse nodes instead of recursing.
+function print_node(io::IO, node::Node)
     print(io, lpad(node.row, 5), " ")
     print(io, lpad(get_column(node), 5), " ")
     if isempty(node.children)
-        print(io, rpad(string(" "^indent, kind(node)), 30), " ")
+        print(io, rpad(string(" "^node.depth, kind(node)), 30), " ")
         if kind(node) in [K"Whitespace", K"NewlineWs"]
             print(io, "\"", escape_string(node.text), "\"")
         else
             print(io, node.text)
         end
     else
-        println(io, rpad(string(" "^indent, "[", kind(node), "]"), 30), " ")
+        println(io, rpad(string(" "^node.depth, "[", kind(node), "]"), 30), " ")
         for (i, child) in enumerate(node.children)
-            print_node(io, child, indent + 1)
+            print_node(io, child)
             i < length(node.children) && println(io)
         end
     end
+end
+
+# Short string description of a node. Intended for debug prints.
+function _string(node::Node)
+    k = string(kind(node))
+    if !is_leaf(node)
+        k = "[$k]"
+    end
+    return string(node.row, " ", get_column(node), " ", k)
 end
 
 kind(node::Node) = JuliaSyntax.kind(node.head)
@@ -78,44 +86,60 @@ is_whitespace(node) = iskind(node, K"Whitespace", K"NewlineWs")
 is_literal(node) = JuliaSyntax.is_literal(kind(node))
 is_first_sibling(node) = first(node.parent.children) === node
 is_last_sibling(node) = last(node.parent.children) === node
-add_attribute!(node::Node, attr::Symbol) = set_attribute!(node, attr, true)
-has_attribute(node::Node, attr::Symbol) = haskey(node.attributes, attr)
-has_attribute(::Nothing, ::Symbol) = false
-function set_attribute!(node::Node, attr::Symbol, value)
-    node.attributes[attr] = value
-end
-get_attribute(node::Node, attr::Symbol) = node.attributes[attr]
-get_attribute(node::Node, attr::Symbol, default) =
-    get(node.attributes, attr, default)
 
-function green_to_node(green::GreenNode, raw::AbstractString, pos::Int = 1,
-                       row::Int = 1, column::Int = 1, sibling_index::Int = 1,
-                       parent::Union{Nothing, Node} = nothing)
-    text = raw[pos:prevind(raw, pos + green.span)]
-    children = Node[]
-    node = Node(children, sibling_index, row, column, text, green.head, parent)
-    if !isnothing(green.children)
-        for (i, green_child) in enumerate(green.children)
-            child, row, column = green_to_node(green_child, raw, pos,
-                                               row, column, i, node)
-            push!(children, child)
-            pos += green_child.span
-        end
-        node.is_leaf = isempty(children)
-    else
-        if contains(text, "\n")
-            row += count(==('\n'), text)
-            column = 1 + length(last(rsplit(text, "\n", limit = 2)))
-        else
-            column += length(text)
-        end
+# is node1 an ancestor of node2?
+function is_ancestor_of(node1::Node, node2::Node)
+    while node2.parent !== node2
+        node2 = node2.parent
+        node2 === node1 && return true
     end
-    return node, row, column
+    return false
+end
+
+function green_to_node(green::GreenNode, raw::AbstractString)
+    pos, row, column = 1, 1, 1
+    root = Node(Node[], 1, row, column, "", green.head, nothing)
+    stack = [green]
+    node = root
+    while !isempty(stack)
+        if isnothing(green.children)
+            #text = raw[pos:prevind(raw, pos + green.span)]
+            text = unsafe_string(pointer(raw, pos), green.span)
+            pos += green.span
+            node.text = text
+            if contains(text, "\n")
+                row += count(==('\n'), text)
+                column = 1 + length(last(rsplit(text, "\n", limit = 2)))
+            else
+                column += length(text)
+            end
+        else
+            i = length(node.children) + 1
+            if i <= length(green.children)
+                green_child = green.children[i]
+                grandchildren = Node[]
+                if !isnothing(green_child.children)
+                    sizehint!(grandchildren, length(green_child.children))
+                end
+                child = Node(grandchildren, i, row, column, "", green_child.head, node)
+                push!(node.children, child)
+                node = child
+                push!(stack, green)
+                green = green_child
+                continue
+            end
+        end
+        green = pop!(stack)
+        node = node.parent
+        node.is_leaf = false
+    end
+
+    return root
 end
 
 function parse_string(raw)
     green = parseall(GreenNode, raw; filename = "", ignore_warnings = true)
-    node, _, _ = green_to_node(green, raw)
+    node = green_to_node(green, raw)
     return node
 end
 
@@ -173,6 +197,16 @@ end
 # not parent. Return the root node if there is no following node.
 function move_right(node)
     is_leaf(node) || return first(node.children)
+    while node.index == length(node.parent.children)
+        node = node.parent
+        is_root(node) && return node
+    end
+    return node.parent.children[node.index + 1]
+end
+
+# Move to the following node but skip children. Return the root node
+# if there is no following node.
+function move_right_no_descent(node)
     while node.index == length(node.parent.children)
         node = node.parent
         is_root(node) && return node
@@ -253,6 +287,99 @@ function remove_child!(parent, position)
     end
     invalidate_column_for_rest_of_row(parent)
     return
+end
+
+# Move a first child node up to parent.
+function move_first_sibling_out_of_node!(node)
+    @assert !is_root(node)
+    @assert is_first_sibling(node)
+    parent = node.parent
+    popfirst!(parent.children)
+    for i in eachindex(parent.children)
+        parent.children[i].index = i
+    end
+    parent.is_leaf = isempty(parent.children)
+    node.parent = parent.parent
+    node.depth -= 1
+    index = parent.index
+    insert!(parent.parent.children, index, node)
+    for i in index:length(parent.parent.children)
+        parent.parent.children[i].index = i
+    end
+end
+
+# Move a last child node up to parent.
+function move_last_sibling_out_of_node!(node)
+    @assert !is_root(node)
+    @assert is_last_sibling(node)
+    parent = node.parent
+    pop!(parent.children)
+    parent.is_leaf = isempty(parent.children)
+    node.parent = parent.parent
+    node.depth -= 1
+    index = parent.index
+    insert!(parent.parent.children, index + 1, node)
+    for i in index:length(parent.parent.children)
+        parent.parent.children[i].index = i
+    end
+end
+
+# Move a node to be first child of the immediately following
+# sibling node.
+function move_node_into_following_sibling!(node)
+    @assert !is_root(node)
+    @assert !is_last_sibling(node)
+    parent = node.parent
+    index = node.index
+    next = node.parent.children[index + 1]
+    deleteat!(parent.children, index)
+    for i in index:length(parent.children)
+        parent.children[i].index = i
+    end
+    node.parent = next
+    node.depth += 1
+    pushfirst!(next.children, node)
+    for i in eachindex(next.children)
+        next.children[i].index = i
+    end
+    next.is_leaf = false
+end
+
+# Move a node to be last child of the immediately previous
+# sibling node.
+function move_node_into_previous_sibling!(node)
+    @assert !is_root(node)
+    @assert !is_first_sibling(node)
+    parent = node.parent
+    index = node.index
+    prev = node.parent.children[index - 1]
+    deleteat!(parent.children, index)
+    for i in index:length(parent.children)
+        parent.children[i].index = i
+    end
+    node.parent = prev
+    node.depth += 1
+    push!(prev.children, node)
+    node.index = length(prev.children)
+    prev.is_leaf = false
+end
+
+function refresh_parent_and_index_for_children!(node)
+    for i in eachindex(node.children)
+        node.children[i].parent = node
+        node.children[i].index = i
+    end
+end
+
+# Adjust the depth field of node and all its recursive children by
+# delta.
+function adjust_depth!(node, delta)
+    next_node = move_right_no_descent(node)
+    node′ = node
+    while node′ !== next_node
+        node′.depth += delta
+        node′ = move_right(node′)
+    end
 end
 
 function get_column(node)

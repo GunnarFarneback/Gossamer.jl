@@ -4,98 +4,43 @@ function format_string(s::AbstractString)
     return write_node(node)
 end
 
-# This is written with an explicit stack instead of recursion to be
-# able to handle pathological code. However, it turns out that
-# JuliaSyntax fails in its recursion for deeply nested code, so for
-# now we don't get to handle such cases here.
-function format_node!(node::Node, parent::Node = node)
-    analyze_tree!(node)
-    stack = [(node, 1)]
-    while !isempty(stack)
-        node, i = pop!(stack)
-        inhibit_node_recursion(node) && continue
-        propagate_inline_space_inhibition(node)
-        i > length(node.children) && continue
-        child = node.children[i]
-        space_after_comma(child)
-        i = space_around_binary_operator(child)
-        space_after_comment(child)
-        i += indent(child)
-        push!(stack, (node, i + 1))
-        push!(stack, (child, 1))
-    end
-    return
+function format_node!(node::Node)
+    # Catch corner case of empty file.
+    isempty(node.children) && return
+
+    move_newlines!(node)
+    format_spaces!(node)
+    format_indent!(node)
 end
 
-function analyze_tree!(tree::Node)
-    stack = [(tree, 1, Node[], Node[], Node[], Int[])]
-    while !isempty(stack)
-        # println("stack:")
-        # for (a,b,c) in stack
-        #     println("  ", b, " (", a.row, ", ", a.column, ", ", kind(a), ")    (", c.row, ", ", c.column, ", ", kind(c), ")")
-        # end
-        # println("------")
-        node, i, openings, colon_nodes, ternary_nodes, hanging_indents =
-            pop!(stack)
-        i > length(node.children) && continue
-        child = node.children[i]
-        # println("(", node.row, ", ", node.column, ", ", kind(node), ")    (", opening.row, ", ", opening.column, ", ", kind(opening), ")")
-        if i == 1 && iskind(node, K"block") && !iskind(node.parent, K"let")
-            hanging_indents = copy(hanging_indents)
-            if !isempty(hanging_indents)
-                hanging_indents[end] += 1
-            end
-        end
-        if is_leaf(child)
-            if iskind(child, K"NewlineWs")
-                #@show child hanging_indents
-                #println("Set attribute to ", kind(opening))
-                if !isempty(openings)
-                    set_attribute!(child, :opening, last(openings))
-                end
-                if !isempty(colon_nodes)
-                    set_attribute!(child, :colon, last(colon_nodes))
-                end
-                if !isempty(ternary_nodes)
-                    set_attribute!(child, :ternary, last(ternary_nodes))
-                end
-                if !isempty(hanging_indents)
-                    set_attribute!(child, :hanging_indents, last(hanging_indents))
-                end
-            elseif iskind(child, K"(", K"[", K"{", K"let", K"=", K"import", K"using",
-                          K"export", K"public", K"return")
-                # println("Found opening")
-                openings = vcat(openings, child)
-                hanging_indents = vcat(hanging_indents, 0)
-            elseif iskind(child, K":")
-                colon_nodes = vcat(colon_nodes, child)
-            elseif iskind(child, K"?")
-                ternary_nodes = vcat(ternary_nodes, child)
-            end
+function format_spaces!(node::Node)
+    node = move_right(node)
+    inhibit = false
+    inhibit_next = false
+    inhibit_depth = 0
+    while !is_root(node)
+        if inhibit_node_recursion(node)
+            node = move_right_no_descent(node)
         else
-            if iskind(child, K"do")
-                # The preceding function call opening must be discarded
-                # when descensing into a `do`.
-                openings = openings[1:(end - 1)]
-            elseif i == 1 && iskind(node, K"iteration") && iskind(move_left(node), K"for")
-                # Comprehension.
-                openings = vcat(openings, move_left(node))
-                hanging_indents = vcat(hanging_indents, 0)
-            elseif i == 1 && iskind(node, K"iteration") && iskind(node.parent, K"filter") && iskind(move_left(node.parent), K"for")
-                # Filtered comprehension.
-                openings = vcat(openings, move_left(node.parent))
-                hanging_indents = vcat(hanging_indents, 0)
+            if !inhibit
+                space_after_comma(node)
+                inhibit_next = space_around_binary_operator(node)
             end
+            space_after_comment(node)
+            space_before_do(node)
+            node = move_right(node)
         end
-        push!(stack, (node, i + 1, openings,
-                      colon_nodes, ternary_nodes, hanging_indents))
-        push!(stack, (child, 1, openings,
-                      colon_nodes, ternary_nodes, hanging_indents))
+        if inhibit_next
+            inhibit_depth = node.depth
+            inhibit_next = false
+            inhibit = true
+        elseif node.depth <= inhibit_depth
+            inhibit = false
+        end
     end
     return
 end
 
-# TODO: Replace with :inhibit_inline_space_formatting mechanism?
 function inhibit_node_recursion(node)
     iskind(node, K"string", K"cmdstring") && return true
     is_colon_call(node) && return true
@@ -108,15 +53,7 @@ function is_colon_call(node)
                for child in node.children)
 end
 
-function propagate_inline_space_inhibition(node)
-    has_attribute(node, :inhibit_inline_space_formatting) || return
-    for child in node.children
-        add_attribute!(child, :inhibit_inline_space_formatting)
-    end
-end
-
 function space_after_comma(node)
-    has_attribute(node, :inhibit_inline_space_formatting) && return
     prev = move_left_to_leaf(node)
     next = move_right_to_leaf(node)
     if iskind(node, K",", K";")
@@ -125,8 +62,7 @@ function space_after_comma(node)
                 # Swap ` ,` to `, `.
                 node.head, prev.head = prev.head, node.head
                 node.text, prev.text = prev.text, node.text
-                node.column_is_current = false
-                prev.column_is_current = false
+                invalidate_column_for_rest_of_row(prev)
             else
                 insert_space!(node.parent, node.index + 1)
             end
@@ -135,17 +71,13 @@ function space_after_comma(node)
     return
 end
 
-# Returns new index of the node.
-#
-# TODO: Rewrite to return index offset instead of new index.
 function space_around_binary_operator(node)
     parent = node.parent
     index = node.index
-    index == 1 && return index
-    has_attribute(node, :inhibit_inline_space_formatting) && return index
+    index == 1 && return false
     # Only consider operator nodes.
-    node_is_operator(node) || return index
-    iskind(node, K".") && return index
+    node_is_operator(node) || return false
+    iskind(node, K".") && return false
 
     space_before = false
     space_node_before = nothing
@@ -167,7 +99,7 @@ function space_around_binary_operator(node)
         end
     end
 
-    op_before && return index
+    op_before && return false
 
     space_after = false
     space_node_after = nothing
@@ -201,35 +133,34 @@ function space_around_binary_operator(node)
         end
     end
 
-    (nonspace_before && nonspace_after) || return index
-    (comma_after || closing_after) && return index
+    (nonspace_before && nonspace_after) || return false
+    (comma_after || closing_after) && return false
     # Process .op when we get to op.
-    iskind(node, K".") && op_after && return index
+    iskind(node, K".") && op_after && return false
 
-    node.text in ("^", "::", "//", "<:") && !space_before && !space_after && return index
+    node.text in ("^", "::", "//", "<:") && !space_before && !space_after && return false
 
     if node.text == "::" && space_before && !space_after
         # Accept this inside struct definitions. It occurs in the
         # wild.
         if iskind(node.parent, K"::") && iskind(node.parent.parent, K"block") && iskind(node.parent.parent.parent, K"struct")
-            return index
+            return false
         end
     end
 
     # Accept division without space if both arguments are literals.
     if node.text == "/" && !space_before && !space_after
         if is_literal(move_left(node)) && is_literal(move_right(node))
-            return index
+            return false
         end
     end
 
     next = move_right(node)
     if (iskind(node, K"=") && iskind(node.parent, K"=")
-        && iskind(node.parent.parent, K"call", K"dotcall", K"parameters", K"macrocall", K"tuple")
+        && iskind(node.parent.parent, K"call", K"dotcall", K"parameters", K"macrocall", K"tuple", K"ref")
         && !space_before && !space_after)
 
-        add_attribute!(move_right(node), :inhibit_inline_space_formatting)
-        return index
+        return true
     end
 
     add_space_before = false
@@ -253,13 +184,25 @@ function space_around_binary_operator(node)
                 add_space_after = true
             end
         end
-    elseif node.text in ("^", "::", "//")
+    elseif node.text == "::"
         if !space_before || !space_after
             if space_before
                 remove_space_before = true
             end
             if space_after
                 remove_space_after = true
+            end
+        end
+    elseif node.text in ("^", "//")
+        # It's tempting to format `x ^2` to `x^2` rather than `x ^ 2`
+        # but there's a whole can of worms related to `1 .^2`,
+        # `1. ^2` etc.
+        if !space_before || !space_after
+            if !space_before
+                add_space_before = true
+            end
+            if !space_after
+                add_space_after = true
             end
         end
     else
@@ -279,15 +222,13 @@ function space_around_binary_operator(node)
     remove_space_after && remove_space!(space_node_after)
     if add_space_before
         insert_space!(parent, index - dot_before)
-        index += 1
     end
 
     if remove_space_before
         remove_space!(space_node_before)
-        index -= 1
     end
 
-    return index
+    return false
 end
 
 function space_after_comment(node)
@@ -298,13 +239,29 @@ function space_after_comment(node)
         node.text = rstrip(node.text, (' ', '\t'))
     end
     if contains(node.text, "\n")
-        node.text = join((rstrip(line, (' ', '\t'))
+        node.text = join((rstrip_line(line)
                           for line in eachsplit(node.text, '\n')),
                          '\n')
     end
     if node.text != reference_text
         invalidate_column_for_rest_of_row(node)
     end
+end
+
+function rstrip_line(line)
+    suffix = ""
+    if endswith(line, '\r')
+        line = chopsuffix(line, "\r")
+        suffix = "\r"
+    end
+    return rstrip(line, (' ', '\t')) * suffix
+end
+
+function space_before_do(node)
+    is_leaf(node) || return
+    iskind(node, K"do") || return
+    iskind(move_left(node), K"Whitespace") && return
+    insert_space!(node.parent, node.index)
 end
 
 function insert_space!(node, index)
@@ -330,8 +287,8 @@ const operator_strings = let
         if !JuliaSyntax.is_error(kind))
 end
 
-function node_is_operator(node)
-    is_leaf(node) || return false
+function node_is_operator(node, require_leaf = true)
+    !require_leaf || is_leaf(node) || return false
     if iskind(node, K"Identifier")
         return node.text in operator_strings
     end

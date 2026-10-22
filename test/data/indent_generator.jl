@@ -1,0 +1,134 @@
+Dict(x
+     for x in X)
+##
+Dict(x
+     for x in X
+     if true)
+##
+Dict(x
+     for x in X,
+         y in Y)
+##
+Dict(x
+     for x in X,
+         y in Y
+     if true)
+##
+yy = Dict(x
+          for x in X)
+##
+yy = Dict(x
+          for x in X
+          if true)
+##
+yy = Dict(x
+          for x in X,
+              y in Y)
+##
+yy = Dict(x
+          for x in X,
+              y in Y
+          if true)
+##
+x = f((x
+       for x in x),
+      init = 0)
+##
+x = f((x
+       for x in x
+       if true),
+      init = 0)
+##
+begin
+    sum(sum(sum(x
+                for x in  X)
+            for y in Y)
+        for z in Z
+        )
+end
+##
+begin
+sumsum(sumsum(sumsum(x
+for x in  X)
+for y in Y)
+for z in Z
+)
+end
+#
+begin
+    sumsum(sumsum(sumsum(x
+                         for x in  X)
+                  for y in Y)
+           for z in Z
+           )
+end
+##
+begin
+    sumsum(sumsum(sumsum(x
+                for x in  X)
+            for y in Y)
+        for z in Z
+    )
+end
+##
+y = f(x for
+      x in X)
+##
+y = f(
+    x for
+    x in X)
+##
+y = f(
+    x for
+     x in X)
+#
+y = f(
+    x for
+        x in X)
+##
+y = f(x for
+      x in X if
+      true)
+##
+y = f(
+    x for
+    x in X if
+    true)
+##
+y = f(
+    x for
+    x in X if
+     true)
+#
+y = f(
+    x for
+    x in X if
+        true)
+##
+y = f(
+    x for
+     x in X if
+    true)
+#
+y = f(
+    x for
+        x in X if
+            true)
+##
+y = f(
+    x for
+     x in X
+    if true)
+#
+y = f(
+    x for
+        x in X
+    if true)
+##
+y = f(x for
+          x in X if
+        true)
+#
+y = f(x for
+          x in X if
+              true)
