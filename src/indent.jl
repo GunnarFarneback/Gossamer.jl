@@ -433,6 +433,7 @@ function indent_newline_node!(root, node, states, previous_newline_node)
         is_multiline_string_or_cmd(move_right(node))
 
         node.text = lstrip(node.text, (' ', '\t'))
+        node.newline_index = findfirst(==('\n'), node.text)
         return
     end
 
@@ -453,6 +454,7 @@ function indent_newline_node!(root, node, states, previous_newline_node)
     # state unchanged.
     if iskind(move_right(node), K"NewlineWs")
         node.text = lstrip(before_newline, (' ', '\t')) * newline_chars
+        node.newline_index = findfirst(==('\n'), node.text)
         return
     end
 
@@ -642,6 +644,9 @@ function indent_newline_node!(root, node, states, previous_newline_node)
     if !isempty(exotic_spaces)
         node′ = move_right_to_leaf(node)
         node′.text = exotic_spaces * node′.text
+        if node′.newline_index > 0
+            node′.newline_index = findfirst(==('\n'), node′.text)
+        end
         invalidate_column_for_rest_of_row(node′)
     end
     reference_text = node.text
@@ -727,6 +732,7 @@ function indent_newline_node!(root, node, states, previous_newline_node)
     @assert indent_to >= 0
     node.text = string(newline_chars, " "^indent_to)
     if node.text != reference_text
+        node.newline_index = findfirst(==('\n'), node.text)
         invalidate_column_for_rest_of_row(node)
     end
 
@@ -758,6 +764,7 @@ function indent_newline_node!(root, node, states, previous_newline_node)
                 newline_chars = contains(node′.text, "\r\n") ? "\r\n" : "\n"
                 node′.text = string(newline_chars, " "^indent_to)
                 if node′.text != reference_text
+                    node′.newline_index = findfirst(==('\n'), node′.text)
                     invalidate_column_for_rest_of_row(node′)
                 end
             end
@@ -806,7 +813,7 @@ function indentation_of_node(node)
     node′ = move_right_to_leaf(node)
     # At the very end of the tree this takes us to the root.
     if is_root(node′)
-        return length(node.text[findfirst(==('\n'), node.text):end])
+        return length(node.text[node.newline_index:end])
     end
 
     return get_column(node′) - 1
@@ -817,7 +824,7 @@ end
 function is_not_indented_comment(node)
     iskind(node, K"Comment") || return false
     get_column(node) == 1 && return true
-    contains(node.text, "\n") && return true
+    contains_newline(node) && return true
     return false
 end
 
@@ -905,6 +912,7 @@ function preprocess_indentation_space!(node)
                             count = num_tabs_to_replace)
     end
     if node.text != reference_text
+        node.newline_index = findfirst(==('\n'), node.text)
         invalidate_column_for_rest_of_row(node)
     end
     return exotic_spaces

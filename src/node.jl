@@ -25,6 +25,9 @@ mutable struct Node
     # The source text covered by this node. For non-leaf nodes this is
     # always the original source.
     text::Union{String, SubString{String}}
+    # Index to first newline character in `text`. Set to zero if no
+    # newline present.
+    newline_index::Int
     # Head of corresponding GreenNode.
     # TODO: Change to Kind?
     head::SyntaxHead
@@ -35,11 +38,12 @@ mutable struct Node
                   text::Union{String, SubString{String}}, head::SyntaxHead,
                   parent::Union{Nothing, Node})
         if isnothing(parent)
-            node = new(children, true, 0, index, row, column, true, text, head)
+            node = new(children, true, 0, index, row, column, true, text,
+                       0, head)
             node.parent = node
         else
             node = new(children, true, parent.depth + 1, index, row, column,
-                       true, text, head, parent)
+                       true, text, 0, head, parent)
         end
         return node
     end
@@ -107,9 +111,10 @@ function green_to_node(green::GreenNode, raw::AbstractString)
             text = unsafe_string(pointer(raw, pos), green.span)
             pos += green.span
             node.text = text
-            if contains(text, "\n")
+            if contains(text, '\n')
                 row += count(==('\n'), text)
                 column = 1 + length(last(rsplit(text, "\n", limit = 2)))
+                node.newline_index = findfirst(==('\n'), text)
             else
                 column += length(text)
             end
@@ -464,7 +469,5 @@ function invalidate_column_for_rest_of_row(node, column = node.column)
 end
 
 function contains_newline(node::Node)
-    iskind(node, K"NewlineWs") && return true
-    iskind(node, K"String", K"Comment") && contains(node.text, "\n") && return true
-    return false
+    return node.newline_index > 0
 end
