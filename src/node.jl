@@ -103,10 +103,13 @@ function green_to_node(green::GreenNode, raw::AbstractString)
     pos, row, column = 1, 1, 1
     root = Node(Node[], 1, row, column, "", JuliaSyntax.kind(green.head),
                 nothing)
-    stack = [green]
-    node = root
+    stack = [(green, root, 1)]
     while !isempty(stack)
-        if isnothing(green.children)
+        green, node, i = pop!(stack)
+        if !isnothing(green.children) && i < length(green.children)
+            push!(stack, (green, node, i + 1))
+        end
+        if isnothing(green.children) || isempty(green.children)
             #text = raw[pos:prevind(raw, pos + green.span)]
             text = unsafe_string(pointer(raw, pos), green.span)
             pos += green.span
@@ -119,25 +122,20 @@ function green_to_node(green::GreenNode, raw::AbstractString)
                 column += length(text)
             end
         else
-            i = length(node.children) + 1
+            node.is_leaf = false
             if i <= length(green.children)
                 green_child = green.children[i]
                 grandchildren = Node[]
                 if !isnothing(green_child.children)
                     sizehint!(grandchildren, length(green_child.children))
                 end
-                child = Node(grandchildren, i, row, column, "",
+                j = length(node.children) + 1
+                child = Node(grandchildren, j, row, column, "",
                              JuliaSyntax.kind(green_child.head), node)
                 push!(node.children, child)
-                node = child
-                push!(stack, green)
-                green = green_child
-                continue
+                push!(stack, (green_child, child, 1))
             end
         end
-        green = pop!(stack)
-        node = node.parent
-        node.is_leaf = false
     end
 
     return root
