@@ -437,23 +437,16 @@ function indent_newline_node!(root, node, states, previous_newline_node)
         return
     end
 
-    # Split the NewlineWs text into three parts:
-    # 1. Text before the newline.
-    # 2. Newline character(s), either \n or \r\n.
-    # 3. Text after the newline
-    #
-    # TODO: after_newline is never used but related to exotic_spaces.
-    before_newline, after_newline = split(node.text, "\n", limit = 2)
+    # Detect newline convention.
     newline_chars = "\n"
-    if endswith(before_newline, "\r")
-        before_newline = chopsuffix(before_newline, "\r")
+    if node.newline_index > 1 && node.text[prevind(node.text, node.newline_index)] == '\r'
         newline_chars = "\r\n"
     end
 
     # If whitespace only line, strip it down and leave the indentation
     # state unchanged.
     if iskind(move_right(node), K"NewlineWs")
-        node.text = lstrip(before_newline, (' ', '\t')) * newline_chars
+        node.text = lstrip(node.text[1:node.newline_index], (' ', '\t'))
         node.newline_index = findfirst(==('\n'), node.text)
         return
     end
@@ -640,7 +633,7 @@ function indent_newline_node!(root, node, states, previous_newline_node)
 
     # Remove trailing space and convert indenting tabs to spaces. Move
     # exotic space into the text of the following leaf node.
-    exotic_spaces = preprocess_indentation_space!(node)
+    exotic_spaces = preprocess_indentation_space!(node, newline_chars)
     if !isempty(exotic_spaces)
         node′ = move_right_to_leaf(node)
         node′.text = exotic_spaces * node′.text
@@ -649,7 +642,6 @@ function indent_newline_node!(root, node, states, previous_newline_node)
         end
         invalidate_column_for_rest_of_row(node′)
     end
-    reference_text = node.text
     old_indent = indentation_of_node(node)
 
     if old_indent == hanging_indent || old_indent == left_indent || old_indent == secondary_hanging_indent || old_indent == secondary_left_indent || old_indent == tertiary_hanging_indent
@@ -730,6 +722,7 @@ function indent_newline_node!(root, node, states, previous_newline_node)
     @s(colon_node) = root
 
     @assert indent_to >= 0
+    reference_text = node.text
     node.text = string(newline_chars, " "^indent_to)
     if node.text != reference_text
         node.newline_index = findfirst(==('\n'), node.text)
@@ -885,14 +878,11 @@ end
 #
 # TODO: Can this be combined with the before_newline, newline_chars,
 #       after_newline split?
-function preprocess_indentation_space!(node)
+function preprocess_indentation_space!(node, newline_chars)
     reference_text = node.text
-    newline_index = findfirst(==('\n'), node.text)
-    if newline_index > 1
-        prev_index = prevind(node.text, newline_index)
-        if node.text[prev_index] == '\r'
-            newline_index = prev_index
-        end
+    newline_index = node.newline_index
+    if length(newline_chars) == 2
+        newline_index = prevind(node.text, newline_index)
     end
     node.text = node.text[newline_index:end]
     num_tabs_to_replace = 0
