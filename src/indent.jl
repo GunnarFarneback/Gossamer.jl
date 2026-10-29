@@ -146,7 +146,7 @@ function restructure_do!(node)
     #       [tuple]
     #       [block]
     #
-    node1.head, node2.head = node2.head, node1.head
+    node1.kind, node2.kind = node2.kind, node1.kind
     # Step 2, move the current [call] children up to the parent:
     #
     #   [do]
@@ -245,7 +245,7 @@ function restructure_if_and_while!(node)
     #     ...
     #     [block]
     #     end
-    wrapper = Node(Node[], 2, 0, 0, "", SyntaxHead(K"wrapper", 0x0000), node)
+    wrapper = Node(Node[], 2, 0, 0, "", K"wrapper", node)
     insert!(node.children, 2, wrapper)
     wrapper.is_leaf = false
 

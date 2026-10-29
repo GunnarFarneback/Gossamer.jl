@@ -1,4 +1,4 @@
-using JuliaSyntax: JuliaSyntax, parseall, GreenNode, SyntaxHead, @K_str
+using JuliaSyntax: JuliaSyntax, parseall, GreenNode, Kind, @K_str
 
 mutable struct Node
     # Empty for leaf nodes.
@@ -28,22 +28,21 @@ mutable struct Node
     # Index to first newline character in `text`. Set to zero if no
     # newline present.
     newline_index::Int
-    # Head of corresponding GreenNode.
-    # TODO: Change to Kind?
-    head::SyntaxHead
+    # Kind of corresponding GreenNode.
+    kind::Kind
     # Root node points to itself.
     parent::Node
 
     function Node(children::Vector{Node}, index::Int, row::Int, column::Int,
-                  text::Union{String, SubString{String}}, head::SyntaxHead,
+                  text::Union{String, SubString{String}}, kind::Kind,
                   parent::Union{Nothing, Node})
         if isnothing(parent)
             node = new(children, true, 0, index, row, column, true, text,
-                       0, head)
+                       0, kind)
             node.parent = node
         else
             node = new(children, true, parent.depth + 1, index, row, column,
-                       true, text, 0, head, parent)
+                       true, text, 0, kind, parent)
         end
         return node
     end
@@ -82,8 +81,8 @@ function _string(node::Node)
     return string(node.row, " ", get_column(node), " ", k)
 end
 
-kind(node::Node) = JuliaSyntax.kind(node.head)
-iskind(node::Node, kinds::JuliaSyntax.Kind...) = any(==(kind(node)), kinds)
+kind(node::Node) = node.kind
+iskind(node::Node, kinds::Kind...) = any(==(kind(node)), kinds)
 is_root(node) = node.parent === node
 is_leaf(node) = node.is_leaf
 is_whitespace(node) = iskind(node, K"Whitespace", K"NewlineWs")
@@ -102,7 +101,8 @@ end
 
 function green_to_node(green::GreenNode, raw::AbstractString)
     pos, row, column = 1, 1, 1
-    root = Node(Node[], 1, row, column, "", green.head, nothing)
+    root = Node(Node[], 1, row, column, "", JuliaSyntax.kind(green.head),
+                nothing)
     stack = [green]
     node = root
     while !isempty(stack)
@@ -126,7 +126,8 @@ function green_to_node(green::GreenNode, raw::AbstractString)
                 if !isnothing(green_child.children)
                     sizehint!(grandchildren, length(green_child.children))
                 end
-                child = Node(grandchildren, i, row, column, "", green_child.head, node)
+                child = Node(grandchildren, i, row, column, "",
+                             JuliaSyntax.kind(green_child.head), node)
                 push!(node.children, child)
                 node = child
                 push!(stack, green)
@@ -268,7 +269,7 @@ function move_right_to_leaf(node)
 end
 
 function insert_leaf_node!(node, position, kind, text)
-    leaf = Node(Node[], position, 0, 0, text, SyntaxHead(kind, 0x0000), node)
+    leaf = Node(Node[], position, 0, 0, text, kind, node)
     insert!(node.children, position, leaf)
     # Leaf is in place, but we must update sibling indices and column
     # numbers for later nodes.
