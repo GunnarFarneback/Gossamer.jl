@@ -2,6 +2,9 @@ using JuliaSyntax: JuliaSyntax, parseall, GreenNode, Kind, @K_str
 
 mutable struct Node
     # Empty for leaf nodes.
+    # Important: On construction all leaf nodes share the *same* empty
+    # Node vector. If a leaf node should ever later be transformed
+    # into a non-leaf, a new vector must be used.
     children::Vector{Node}
     # Cached value of isempty(children), for faster lookup.
     is_leaf::Bool
@@ -24,7 +27,7 @@ mutable struct Node
     column_is_current::Bool
     # The source text covered by this node. For non-leaf nodes this is
     # always the original source.
-    text::Union{String, SubString{String}}
+    text::String
     # Index to first newline character in `text`. Set to zero if no
     # newline present.
     newline_index::Int
@@ -104,6 +107,7 @@ function green_to_node(green::GreenNode, raw::AbstractString)
     root = Node(Node[], 1, row, column, "", JuliaSyntax.kind(green.head),
                 nothing)
     stack = [(green, root, 1)]
+    empty_children = Node[]
     while !isempty(stack)
         green, node, i = pop!(stack)
         if !isnothing(green.children) && i < length(green.children)
@@ -125,8 +129,9 @@ function green_to_node(green::GreenNode, raw::AbstractString)
             node.is_leaf = false
             if i <= length(green.children)
                 green_child = green.children[i]
-                grandchildren = Node[]
-                if !isnothing(green_child.children)
+                grandchildren = empty_children
+                if !isnothing(green_child.children) && !isempty(green_child.children)
+                    grandchildren = Node[]
                     sizehint!(grandchildren, length(green_child.children))
                 end
                 kind = JuliaSyntax.kind(green_child.head)
@@ -164,6 +169,7 @@ function parse_string(raw)
     return node
 end
 
+# TODO: Replace recursion with iterative node tree traversal.
 function write_node(io::IO, node::Node)
     if isempty(node.children)
         print(io, node.text)
