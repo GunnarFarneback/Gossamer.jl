@@ -129,11 +129,28 @@ function green_to_node(green::GreenNode, raw::AbstractString)
                 if !isnothing(green_child.children)
                     sizehint!(grandchildren, length(green_child.children))
                 end
-                j = length(node.children) + 1
-                child = Node(grandchildren, j, row, column, "",
-                             JuliaSyntax.kind(green_child.head), node)
-                push!(node.children, child)
-                push!(stack, (green_child, child, 1))
+                kind = JuliaSyntax.kind(green_child.head)
+                if i > 1 && i == length(green.children) && kind == K"NewlineWs"
+                    # If a NewlineWs is the last sibling, move it up
+                    # to the parent. This transformation *also*
+                    # happens in `move_newlines!`. The reason to do it
+                    # in two places is that the full generality of the
+                    # transform would be annoying to perform during
+                    # building of the node tree (i.e. here) but partly
+                    # doing it here makes it less susceptible to
+                    # quadratic time complexity due to sibling index
+                    # updates. The latter has been observed for large
+                    # multidimensional array literals.
+                    j = length(node.parent.children) + 1
+                    child = Node(grandchildren, j, row, column, "", kind, node.parent)
+                    push!(node.parent.children, child)
+                    push!(stack, (green_child, child, 1))
+                else
+                    j = length(node.children) + 1
+                    child = Node(grandchildren, j, row, column, "", kind, node)
+                    push!(node.children, child)
+                    push!(stack, (green_child, child, 1))
+                end
             end
         end
     end

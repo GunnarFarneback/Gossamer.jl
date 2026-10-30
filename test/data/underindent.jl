@@ -113,3 +113,12 @@ end
 end ≈ let
     x
 end
+##
+ffffff(x -> begin
+    try
+        0
+    catch
+    end
+end) do x
+    1
+end
