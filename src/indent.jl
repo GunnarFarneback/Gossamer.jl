@@ -100,7 +100,13 @@ function move_newlines!(root::Node)
             move_last_sibling_out_of_node!(node)
             #continue
         elseif !is_leaf(node) && iskind(node, K"do") && iskind(node.parent, K"call", K"dotcall") && iskind(move_left(node), K")") && is_last_sibling(node)
+            # Note: Traversal needs to continue inside the moved
+            # nodes, so compute the next node in traversal order
+            # before performing the restructuring.
+            next = move_left(node)
             restructure_do!(node)
+            node = next
+            continue
         elseif !is_leaf(node) && iskind(node, K"if", K"elseif", K"while") && iskind(first(node.children), K"if", K"elseif", K"while")
             restructure_if_and_while!(node)
         end
