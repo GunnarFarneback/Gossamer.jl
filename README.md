@@ -1,3 +1,50 @@
+# Notes for staticruntime branch
+
+Build static executable with
+```
+cd staticcompiler
+julia --project static_compile.jl
+```
+
+The Julia version must be 1.14. Test run with e.g.
+```
+./gossamer static_compile.jl
+```
+
+## Needs investigation
+
+### Optional optparse arguments
+
+Remove the `println` statement in the override of `OptParse.complete`
+in `staticcompiler/overrides_optparse.jl` and rebuild. Running
+```
+./gossamer static_compile.jl
+```
+
+now fails with
+```
+TypeError: type assertion failed
+```
+unless the optional arguments are provided, e.g.
+```
+./gossamer -o out.jl --stdin-filename=- static_compile.jl
+```
+
+### Activating indentation formatting
+
+Uncomment the last line of the override for `Gossamer.format_node!`
+and rebuild.
+
+Running the example now gives the runtime error
+```
+MethodError: no method matching `Gossamer.IndentState` with the given argument types.
+ This may be due to a type that the program was not found to make when compiling: `add_dispatch_candidates!(T)` adds one.
+```
+
+This is hard to understand why it happens and `add_dispatch_candidates!` does not seem to make a difference.
+
+---
+
 # Gossamer Julia Code Formatter
 
 Gossamer is a Julia code formatter which gives your code a gossamer

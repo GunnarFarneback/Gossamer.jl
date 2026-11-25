@@ -1,9 +1,13 @@
+# Trampolines available for override in static compilation.
+_stderr() = stderr
+_stdout() = stdout
+
 function @main(ARGS)
     options = try
         parse_options(ARGS)
     catch e
-        showerror(stderr, e)
-        println(stderr)
+        showerror(_stderr(), e)
+        println(_stderr())
         return 1
     end
     return main_loop(options)
@@ -15,14 +19,13 @@ function main_loop(options)
 
     # Ignore all other command line arguments if --version is present.
     if version
-        version = pkgversion(@__MODULE__)
-        println("gossamer version $(version), julia version $(VERSION)")
+        print_version()
         return 0
     end
 
     # Likewise for --help.
     if help
-        println(stdout, usage_help)
+        println(_stdout(), usage_help)
         return 0
     end
 
@@ -59,8 +62,13 @@ function main_loop(options)
     return success ? 0 : 1
 end
 
+const pkg_version = pkgversion(Gossamer)
+function print_version()
+    println("gossamer version $(pkg_version), julia version $(VERSION)")
+end
+
 function fatal(message)
-    printstyled(stderr, "ERROR: ", color = :red)
+    printstyled(_stderr(), "ERROR: ", color = :red)
     println(message)
     return 1
 end
@@ -79,11 +87,11 @@ function format_file(filename, content, index, number_of_files, options)
         node = parse_string(content)
     catch e
         if e isa JuliaSyntax.ParseError
-            showerror(stderr, e)
-            println(stderr)
+            showerror(_stderr(), e)
+            println(_stderr())
         else
-            showerror(stderr, e)
-            println(stderr)
+            showerror(_stderr(), e)
+            println(_stderr())
         end
     end
 
@@ -107,7 +115,7 @@ function format_file(filename, content, index, number_of_files, options)
         if inplace
             success || write_node(filename, output)
         elseif isnothing(output) || output == "-"
-            write_node(stdout, node)
+            write_node(_stdout(), node)
         else
             write_node(output, node)
         end
@@ -132,7 +140,7 @@ function show_diff(filename, content, node)
         rel_a_file = relpath(a_file, tmpdir)
         rel_b_file = relpath(b_file, tmpdir)
         cmd = `git -C $tmpdir --no-pager diff --color=auto --no-index --no-prefix $rel_a_file $rel_b_file`
-        run(pipeline(ignorestatus(cmd), stdout = stderr))
+        run(pipeline(ignorestatus(cmd), stdout = _stderr()))
     end
 end
 
