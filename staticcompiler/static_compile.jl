@@ -13,8 +13,9 @@ include("overrides_base.jl")
 include("overrides_juliasyntax.jl")
 include("overrides_gossamer.jl")
 
-# This should presumably somehow help when removing the last override
-# in override_gossamer.jl, but does not seem to have any effect.
-add_dispatch_candidates!(Gossamer.Node, Gossamer.IndentState)
+# Convince StaticRuntime that it's fine to print color. (This is not
+# always correct, such as when piping output to a file.)
+Base.get(::StaticIO, key::Symbol, default) = (key == :color) ? true : default
 
-compile_executable(Gossamer.main, (Vector{String},), @__DIR__, "gossamer")
+compile_executable(Gossamer.main, (Vector{String},), @__DIR__, "gossamer",
+                   libraries = :bundle, small = true)
