@@ -17,5 +17,14 @@
 
     Gossamer.move_newlines!(node)
     Gossamer.format_spaces!(node)
-    # Gossamer.format_indent!(node)
+    Gossamer.format_indent!(node)
+end
+
+# Changes:
+# * Only show parse errors from JuliaSyntax.
+@device_override function Gossamer._showerror(e)
+    if e isa JuliaSyntax.ParseError
+        showerror(STDERR, e)
+        println(STDERR)
+    end
 end

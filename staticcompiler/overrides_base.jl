@@ -12,7 +12,3 @@ const libutf8proc_path = utf8proc_jll.get_libutf8proc_path()
     ccall((:utf8proc_grapheme_break_stateful, libutf8proc_path), Bool,
           (UInt32, UInt32, Ref{Int32}), c1, c2, state)
 end
-
-# Changes:
-# * Just entirely disable showerror for now.
-@device_override Base.showerror(x, y) = println("Dummy showerror")
