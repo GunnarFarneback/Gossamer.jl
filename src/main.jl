@@ -6,8 +6,7 @@ function @main(ARGS)
     options = try
         parse_options(ARGS)
     catch e
-        showerror(_stderr(), e)
-        println(_stderr())
+        _showerror(e)
         return 1
     end
     return main_loop(options)
@@ -86,13 +85,7 @@ function format_file(filename, content, index, number_of_files, options)
     try
         node = parse_string(content)
     catch e
-        if e isa JuliaSyntax.ParseError
-            showerror(_stderr(), e)
-            println(_stderr())
-        else
-            showerror(_stderr(), e)
-            println(_stderr())
-        end
+        _showerror(e)
     end
 
     if isnothing(node)
@@ -142,6 +135,11 @@ function show_diff(filename, content, node)
         cmd = `git -C $tmpdir --no-pager diff --color=auto --no-index --no-prefix $rel_a_file $rel_b_file`
         run(pipeline(ignorestatus(cmd), stdout = _stderr()))
     end
+end
+
+function _showerror(e)
+    showerror(_stderr(), e)
+    println(_stderr())
 end
 
 function locate_input_files(files)
