@@ -11,7 +11,6 @@ end
 # version.
 include("overrides_base.jl")
 include("overrides_juliasyntax.jl")
-include("overrides_optparse.jl")
 include("overrides_gossamer.jl")
 
 # This should presumably somehow help when removing the last override
