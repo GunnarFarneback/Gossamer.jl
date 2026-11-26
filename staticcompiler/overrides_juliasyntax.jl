@@ -1,12 +1,12 @@
 import JuliaSyntax
 
 # Changes:
-# * Ccall to `jl_strtod_c` replaced by ccall to `strtod` in Libc. This
-#   is incorrect since it makes parsing locale dependent.
+# * Ccall to `jl_strtod_c` replaced by ccall to `strtod` in Libc via
+#   the `_strtod_c` function below.
 @device_override @inline function JuliaSyntax._unsafe_parse_float(::Type{Float64}, ptr, strsize)
     Libc.errno(0)
     endptr = Ref{Ptr{UInt8}}(C_NULL)
-    x = ccall(:strtod, Cdouble, (Ptr{UInt8}, Ptr{Ptr{UInt8}}), ptr, endptr)
+    x = _strtod_c(ptr, endptr)
     JuliaSyntax.@check endptr[] == ptr + strsize
     status = :ok
     if Libc.errno() == Libc.ERANGE
@@ -23,8 +23,8 @@ import JuliaSyntax
 end
 
 # Changes:
-# * Ccall to `jl_strtof_c` replaced by ccall to `strtof` in Libc. This
-#   is incorrect since it makes parsing locale dependent.
+# * Ccall to `jl_strtof_c` replaced by ccall to `strtof` in Libc via
+#   the `_strtof_c` function below.
 # * Same for `jl_strtod_c`, although this is only used on Windows,
 #   which isn't supported by StaticRuntime yet anyway.
 @inline function JuliaSyntax._unsafe_parse_float(::Type{Float32}, ptr, strsize)
@@ -44,17 +44,30 @@ end
         # strtof seems buggy on windows and doesn't set ERANGE correctly on
         # overflow. See also
         # https://github.com/JuliaLang/julia/issues/46544
-        x = Float32(ccall(:strtod, Cdouble, (Ptr{UInt8}, Ptr{Ptr{UInt8}}), ptr, endptr))
+        x = _strtod_c(ptr, endptr)
         if isinf(x)
             status = :overflow
             # Underflow not detected, but that will only be a warning elsewhere.
         end
     else
-        x = ccall(:strtof, Cfloat, (Ptr{UInt8}, Ptr{Ptr{UInt8}}), ptr, endptr)
+        x = _strtof_c(ptr, endptr)
     end
     JuliaSyntax.@check endptr[] == ptr + strsize
     if Libc.errno() == Libc.ERANGE
         status = abs(x) < 1 ? :underflow : :overflow
     end
     return (x, status)
+end
+
+# Strictly this should call `strtod_l` with a locale object for the
+# "C" locale. Creating the locale object is a bit hard to do outside
+# of C, however, and the "C" locale should be set by default when the
+# program is started anyway.
+function _strtod(ptr, endptr)
+    return ccall(:strtod, Cdouble, (Ptr{UInt8}, Ptr{Ptr{UInt8}}), ptr, endptr)
+end
+
+# Same comment as above.
+function _strtof(ptr, endptr)
+    return ccall(:strtof, Cdouble, (Ptr{UInt8}, Ptr{Ptr{UInt8}}), ptr, endptr)
 end
