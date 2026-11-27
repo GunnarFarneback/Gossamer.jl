@@ -1,4 +1,4 @@
-debug = false
+const debug = false
 
 mutable struct IndentState
     opening_node::Node
