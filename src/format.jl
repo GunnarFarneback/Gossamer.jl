@@ -60,7 +60,7 @@ function space_after_comma(node)
         if !(is_whitespace(next) || iskind(next, K")", K"]", K"}", K",", K";") || iskind(prev, K"(", K"[", K"{"))
             if node.index > 1 && iskind(prev, K"Whitespace")
                 # Swap ` ,` to `, `.
-                node.head, prev.head = prev.head, node.head
+                node.kind, prev.kind = prev.kind, node.kind
                 node.text, prev.text = prev.text, node.text
                 invalidate_column_for_rest_of_row(prev)
             else
