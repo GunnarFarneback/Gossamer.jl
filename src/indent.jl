@@ -16,20 +16,9 @@ mutable struct IndentState
     extra_indent_from_continued_expression::Bool
     disable_left_indent::Bool
 
-    # TODO: Once the code is sufficiently stable, replace this with a
-    # standard constructor of the actual fields.
     function IndentState(root::Node)
-        state = new()
-        for i in 1:fieldcount(IndentState)
-            name = fieldname(IndentState, i)
-            type = fieldtype(IndentState, i)
-            if type === Node
-                setfield!(state, name, root)
-            else
-                setfield!(state, name, zero(type))
-            end
-        end
-        return state
+        return new(root, false, root, root, 0, false, false,
+                   0, 0, false, false, false, false, false)
     end
 end
 
