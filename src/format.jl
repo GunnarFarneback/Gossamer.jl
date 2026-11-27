@@ -218,15 +218,10 @@ function space_around_binary_operator(node)
     @assert !(add_space_before && remove_space_before)
     @assert !(add_space_after && remove_space_after)
 
-    add_space_after && insert_space!(parent, index + equals_after + 1)
-    remove_space_after && remove_space!(space_node_after)
-    if add_space_before
-        insert_space!(parent, index - dot_before)
-    end
-
-    if remove_space_before
-        remove_space!(space_node_before)
-    end
+    add_space_after     && insert_space!(parent, index + equals_after + 1)
+    remove_space_after  && remove_space!(space_node_after)
+    add_space_before    && insert_space!(parent, index - dot_before)
+    remove_space_before && remove_space!(space_node_before)
 
     return false
 end
