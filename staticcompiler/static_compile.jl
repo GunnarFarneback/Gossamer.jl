@@ -1,10 +1,14 @@
-import Gossamer
-import JuliaSyntax
-using StaticRuntime: compile_executable, @device_override, StaticIO, STDERR
-
 if VERSION < v"1.14-" || VERSION >= v"1.15-"
     error("Only Julia 1.14 is supported, not $VERSION")
 end
+
+using Pkg
+Pkg.activate(@__DIR__)
+Pkg.instantiate()
+
+import Gossamer
+import JuliaSyntax
+using StaticRuntime: compile_executable, @device_override, StaticIO, STDERR
 
 # Changes:
 # * Only show parse errors from JuliaSyntax.
