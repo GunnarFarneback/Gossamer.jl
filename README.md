@@ -2,14 +2,12 @@
 
 Build static executable with
 ```
-cd staticcompiler
-julia --project static_compile.jl
+julia staticcompiler/static_compile.jl
 ```
 
-The Julia version must be 1.14. Test run with e.g.
-```
-./gossamer static_compile.jl
-```
+The Julia version must be 1.14. Once built, the
+`staticcompiler/gossamer` binary can be used in the same way as the
+`gossamer` App.
 
 ---
 
