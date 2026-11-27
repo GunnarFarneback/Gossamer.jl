@@ -14,7 +14,8 @@ function main_loop(options)
 
     # Ignore all other command line arguments if --version is present.
     if version
-        print_version()
+        version = pkgversion(@__MODULE__)
+        println("gossamer version $(version), julia version $(VERSION)")
         return 0
     end
 
@@ -55,11 +56,6 @@ function main_loop(options)
     end
 
     return success ? 0 : 1
-end
-
-const pkg_version = pkgversion(Gossamer)
-function print_version()
-    println("gossamer version $(pkg_version), julia version $(VERSION)")
 end
 
 function fatal(message)
