@@ -13,8 +13,8 @@ Gossamer = {path = ".."}
 StaticRuntime = {rev = "main", url = "https://github.com/brenhinkeller/StaticRuntime.jl.git"}
 
 [compat]
-JuliaSyntax = "=1.0.2"
-OptParse = "=0.4.3"
+JuliaSyntax = "1.0.2"
+OptParse = "0.4.3"
 Preferences = "1.6"
 StaticCompiler = "0.7.6"
 StaticTools = "0.9"
