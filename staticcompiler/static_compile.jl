@@ -1,17 +1,19 @@
 import Gossamer
-using StaticRuntime
+import JuliaSyntax
+using StaticRuntime: compile_executable, @device_override, StaticIO, STDERR
 
 if VERSION < v"1.14-" || VERSION >= v"1.15-"
     error("Only Julia 1.14 is supported, not $VERSION")
 end
 
-# All these overrides go deep into the internals of respective
-# dependencies and could break on any new version of the
-# dependency. Therefore Project.toml locks the compat down to a single
-# version.
-include("overrides_base.jl")
-include("overrides_juliasyntax.jl")
-include("overrides_gossamer.jl")
+# Changes:
+# * Only show parse errors from JuliaSyntax.
+@device_override function Gossamer._showerror(e)
+    if e isa JuliaSyntax.ParseError
+        showerror(stderr, e)
+        println(stderr)
+    end
+end
 
 # Convince StaticRuntime that it's fine to print color. (This is not
 # always correct, such as when piping output to a file.)

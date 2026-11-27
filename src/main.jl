@@ -1,7 +1,3 @@
-# Trampolines available for override in static compilation.
-_stderr() = stderr
-_stdout() = stdout
-
 function @main(ARGS)
     options = try
         parse_options(ARGS)
@@ -24,7 +20,7 @@ function main_loop(options)
 
     # Likewise for --help.
     if help
-        println(_stdout(), usage_help)
+        println(stdout, usage_help)
         return 0
     end
 
@@ -67,7 +63,7 @@ function print_version()
 end
 
 function fatal(message)
-    printstyled(_stderr(), "ERROR: ", color = :red)
+    printstyled(stderr, "ERROR: ", color = :red)
     println(message)
     return 1
 end
@@ -108,7 +104,7 @@ function format_file(filename, content, index, number_of_files, options)
         if inplace
             success || write_node(filename, output)
         elseif isnothing(output) || output == "-"
-            write_node(_stdout(), node)
+            write_node(stdout, node)
         else
             write_node(output, node)
         end
@@ -133,13 +129,13 @@ function show_diff(filename, content, node)
         rel_a_file = relpath(a_file, tmpdir)
         rel_b_file = relpath(b_file, tmpdir)
         cmd = `git -C $tmpdir --no-pager diff --color=auto --no-index --no-prefix $rel_a_file $rel_b_file`
-        run(pipeline(ignorestatus(cmd), stdout = _stderr()))
+        run(pipeline(ignorestatus(cmd), stdout = stderr))
     end
 end
 
 function _showerror(e)
-    showerror(_stderr(), e)
-    println(_stderr())
+    showerror(stderr, e)
+    println(stderr)
 end
 
 function locate_input_files(files)
